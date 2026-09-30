@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #050505;
+    --foreground: #F3F3F0;
+    --muted: #888884;
+    --border: #141414;
+    --accent-red: #E50914;
   }
 }
 
+@theme {
+  --color-studio-black: #050505;
+  --color-studio-dark: #0A0A0A;
+  --color-studio-charcoal: #121212;
+  --color-studio-border: #1C1C1C;
+  --color-off-white: #F3F3F0;
+  --color-muted-gray: #888884;
+  --color-accent-red: #E50914;
+  --font-display: var(--font-bebas), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+}
+
+/* Hide standard cursor for custom red pointer */
+*, *::before, *::after, html, body, button, a, input, select, textarea {
+  cursor: none !important;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #050505;
+  color: #F3F3F0;
+  selection-background-color: #E50914;
+  selection-color: #FFFFFF;
+}
+
+::selection {
+  background-color: #E50914;
+  color: #FFFFFF;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #050505;
+  color: #F3F3F0;
+  overflow-x: clip;
+  font-family: var(--font-inter), sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial subtle scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222222;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #E50914;
+}
+
+/* Film Grain Overlay */
+.grain-overlay {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+}
+
+/* Scanlines overlay */
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.4) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+}
+
+/* REC Dot Pulse */
+@keyframes recPulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-rec-pulse {
+  animation: recPulse 1.4s infinite ease-in-out;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
