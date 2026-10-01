@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import "./globals.css";
 import LazyMotionProvider from "@/components/fx/LazyMotionProvider";
+import ResetScroll from "@/components/ui/reset-scroll";
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -69,6 +70,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${bebasNeue.variable} ${inter.variable} dark`}>
       <body className="bg-black text-neutral-100 font-sans antialiased selection:bg-red-600 selection:text-black">
+        <ResetScroll />
         <LazyMotionProvider>{children}</LazyMotionProvider>
       </body>
     </html>

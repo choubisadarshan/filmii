@@ -42,6 +42,7 @@ export default function Navbar({ hidden = false }: NavbarProps) {
 
   return (
     <header
+      data-site-nav
       aria-hidden={hidden}
       className={`fixed left-0 right-0 top-0 z-50 border-b transition-[transform,opacity,padding,background-color,border-color] duration-[400ms] ease-in-out ${
         hidden
