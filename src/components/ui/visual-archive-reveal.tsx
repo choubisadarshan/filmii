@@ -1,125 +1,66 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 const VIDEO_SRC = "/showcase_video.mp4";
 const POSTER_SRC = "/showcase_poster.jpg";
 
+function interpolate(
+  progress: number,
+  stops: number[],
+  values: number[],
+  easing: "linear" | "smooth" | "bounce" = "linear",
+) {
+  for (let index = 1; index < stops.length; index += 1) {
+    const start = stops[index - 1];
+    const end = stops[index];
+    const from = values[index - 1];
+    const to = values[index];
+    if (start === undefined || end === undefined || from === undefined || to === undefined) continue;
+    if (progress <= end) {
+      const amount = Math.max(0, Math.min(1, (progress - start) / (end - start)));
+      const eased = easing === "bounce" && index <= 5
+        ? index % 2 === 1
+          ? amount * amount
+          : 1 - (1 - amount) * (1 - amount)
+        : easing === "smooth" || easing === "bounce"
+          ? amount * amount * (3 - 2 * amount)
+          : amount;
+      return from + (to - from) * eased;
+    }
+  }
+  return values[values.length - 1] ?? 0;
+}
+
 /**
- * Scroll-DRIVEN showreel reveal.
+ * Scroll-driven showreel reveal.
  *
  * Design rules that keep it smooth at any scroll speed:
- *  1. Every stage is a function of scroll progress (0..1) — never a setTimeout
- *     chain. Fast scrolling can therefore never "skip" or desync a stage.
+ *  1. Every stage is a function of scroll progress (0..1), so fast scrolling
+ *     always lands on the correct visual state.
  *  2. The page scroll is never hijacked: no wheel/touch preventDefault, no
  *     scrollTo/scrollBy correction, no scroll "hold" listener.
  *  3. The expanded video fills the pinned stage (a sticky block inside the
  *     page), not a `position: fixed` layer — so it never takes over a phone
  *     screen and the rest of the page stays reachable.
- *  4. Exactly one <video> element exists, it is muted + playsInline, its src is
- *     attached only when the section is near the viewport, and it is paused
- *     whenever the reveal is not open.
+ *  4. One requestAnimationFrame loop updates the ball, video mask, and playback
+ *     state without React renders during scrolling.
  */
 
-// Scroll-progress breakpoints for each stage.
-const DROP_END = 0.18;
-const FLIP_START = 0.18;
-const FLIP_END = 0.42;
-const OPEN_START = 0.42;
-const OPEN_END = 0.68;
+const REVEAL_START = 0.42;
+const REVEAL_END = 0.72;
 
 export default function ShowreelReveal() {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
+  const stageLayerRef = useRef<HTMLDivElement>(null);
+  const videoFrameRef = useRef<HTMLDivElement>(null);
+  const ballRef = useRef<HTMLDivElement>(null);
+  const chromeRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  const reduce = useReducedMotion();
 
   const [nearViewport, setNearViewport] = useState(false);
   const [muted, setMuted] = useState(true);
-
-  // Progress through the tall wrapper: 0 = section top hits the top of the
-  // screen, 1 = its bottom does.
-  const { scrollYProgress } = useScroll({
-    target: wrapRef,
-    offset: ["start start", "end end"],
-  });
-
-
-  // --- Stage 1: the box drops in -------------------------------------------
-  const boxY = useTransform(scrollYProgress, [0, DROP_END], ["-55vh", "0vh"]);
-  const boxOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.05, OPEN_START, OPEN_START + 0.04],
-    [0, 1, 1, 0],
-  );
-
-  // --- Stage 2: the flip ----------------------------------------------------
-  const flipY = useTransform(scrollYProgress, [FLIP_START, FLIP_END], [0, 540]);
-  const flipScale = useTransform(
-    scrollYProgress,
-    [FLIP_START, FLIP_START + 0.12, FLIP_END, OPEN_START + 0.04],
-    [1, 1.18, 1, 1.3],
-  );
-  const glow = useTransform(
-    scrollYProgress,
-    [FLIP_END - 0.06, OPEN_START],
-    ["0 20px 60px -20px rgba(0,0,0,0.6)", "0 0 90px 12px hsl(357 92% 47% / 0.55)"],
-  );
-
-  // --- Stage 3: the expand --------------------------------------------------
-  // The clip-path starts exactly where the box sits, so the handoff is seamless.
-  // Percentage-only inset: mixing % and px is what makes an expand snap
-  // instead of glide.
-  const [startInset, setStartInset] = useState({ y: 38, x: 38 });
-  useEffect(() => {
-    const measure = () => {
-      const stage = stageRef.current;
-      const box = boxRef.current;
-      if (!stage || !box) return;
-      const s = stage.getBoundingClientRect();
-      const b = box.getBoundingClientRect();
-      if (!s.width || !s.height) return;
-      setStartInset({
-        y: Math.max(0, ((s.height - b.height) / 2 / s.height) * 100),
-        x: Math.max(0, ((s.width - b.width) / 2 / s.width) * 100),
-      });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
-
-  const insetY = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [startInset.y, 0]);
-  const insetX = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [startInset.x, 0]);
-  const radius = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [20, 0]);
-  const clip = useTransform(
-    [insetY, insetX, radius],
-    ([y, x, r]: number[]) => `inset(${y}% ${x}% ${y}% ${x}% round ${r}px)`,
-  );
-  // Hidden until the box has finished flipping, so it can never peek through.
-  const stageOpacity = useTransform(
-    scrollYProgress,
-    [OPEN_START - 0.01, OPEN_START + 0.01],
-    [0, 1],
-  );
-  const stageScale = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [1.25, 1]);
-  const stageBrightness = useTransform(
-    scrollYProgress,
-    [OPEN_START, OPEN_END],
-    ["brightness(0.35)", "brightness(1)"],
-  );
-  const chromeOpacity = useTransform(scrollYProgress, [OPEN_END - 0.04, OPEN_END], [0, 1]);
-  const hintOpacity = useTransform(scrollYProgress, [0, 0.04, OPEN_START], [1, 1, 0]);
-
 
   // Attach the video source only when the section is close, so scrolling past
   // the top of the page never pays for a video decode.
@@ -142,15 +83,82 @@ export default function ShowreelReveal() {
     return () => io.disconnect();
   }, []);
 
-  // Play only while the reveal is actually open; pause otherwise. This is the
-  // single biggest win against scroll lag.
-  useMotionValueEvent(scrollYProgress, "change", (p) => {
-    const v = videoRef.current;
-    if (!v) return;
-    const shouldPlay = p > OPEN_START - 0.04 && p < 1;
-    if (shouldPlay && v.paused) void v.play().catch(() => {});
-    if (!shouldPlay && !v.paused) v.pause();
-  });
+  useEffect(() => {
+    const wrapper = wrapRef.current;
+    const stageLayer = stageLayerRef.current;
+    const videoFrame = videoFrameRef.current;
+    const ball = ballRef.current;
+    const chrome = chromeRef.current;
+    const hint = hintRef.current;
+    if (!wrapper || !stageLayer || !videoFrame || !ball || !chrome || !hint) return;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frameId = 0;
+
+    const update = () => {
+      frameId = 0;
+      const travel = Math.max(1, wrapper.offsetHeight - window.innerHeight);
+      const progress = Math.max(0, Math.min(1, -wrapper.getBoundingClientRect().top / travel));
+      const dropDistance = Math.min(280, window.innerHeight * 0.42);
+
+      const ballY = interpolate(
+        progress,
+        [0, 0.12, 0.19, 0.26, 0.32, 0.38, 0.44],
+        [-dropDistance, 0, -dropDistance * 0.5, 0, -dropDistance * 0.22, 0, 0],
+        "bounce",
+      );
+      const ballScale = interpolate(
+        progress,
+        [0, 0.12, 0.19, 0.26, 0.32, 0.38, 0.44],
+        [1, 1, 0.9, 1, 0.94, 1, 0],
+        "smooth",
+      );
+      const ballOpacity = interpolate(progress, [0, 0.04, 0.4, 0.46], [0, 1, 1, 0], "smooth");
+      const revealRadius = interpolate(progress, [0, REVEAL_START, REVEAL_END], [0, 0, 150], "smooth");
+      const revealScale = interpolate(progress, [REVEAL_START, REVEAL_END], [0.94, 1], "smooth");
+      const backgroundOpacity = interpolate(progress, [REVEAL_START - 0.02, REVEAL_START + 0.02], [0, 1]);
+      const chromeOpacity = interpolate(progress, [0.64, 0.68], [0, 1]);
+      const hintOpacity = interpolate(progress, [0, 0.04, REVEAL_START], [1, 1, 0]);
+
+      if (reducedMotion.matches) {
+        stageLayer.style.opacity = "1";
+        videoFrame.style.clipPath = "circle(150% at 50% 50%)";
+        videoFrame.style.transform = "scale(1)";
+        ball.style.opacity = "0";
+        chrome.style.opacity = `${progress > 0.68 ? 1 : 0}`;
+      } else {
+        stageLayer.style.opacity = `${backgroundOpacity}`;
+        videoFrame.style.clipPath = `circle(${revealRadius}% at 50% 50%)`;
+        videoFrame.style.transform = `scale(${revealScale})`;
+        ball.style.transform = `translate3d(-50%, calc(-50% + ${ballY}px), 0) scale(${ballScale})`;
+        ball.style.opacity = `${ballOpacity}`;
+        chrome.style.opacity = `${chromeOpacity}`;
+      }
+      hint.style.opacity = `${hintOpacity}`;
+
+      const video = videoRef.current;
+      if (!video) return;
+      const shouldPlay = progress > REVEAL_START - 0.04 && progress < 1;
+      if (shouldPlay && video.paused) void video.play().catch(() => {});
+      if (!shouldPlay && !video.paused) video.pause();
+    };
+
+    const scheduleUpdate = () => {
+      if (!frameId) frameId = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    reducedMotion.addEventListener("change", scheduleUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      reducedMotion.removeEventListener("change", scheduleUpdate);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [nearViewport]);
 
   const toggleSound = () => {
     const v = videoRef.current;
@@ -164,27 +172,9 @@ export default function ShowreelReveal() {
     // Tall wrapper = the scroll budget for the whole sequence.
     // No `overflow: hidden` here or on any ancestor, or sticky stops working.
     <div ref={wrapRef} className="relative h-[280vh] w-full bg-background">
-      <div
-        ref={stageRef}
-        className="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden"
-      >
-        {/* Expanding video stage — fills this pinned block, never the device */}
-        <motion.div
-          style={{
-            clipPath: reduce ? "inset(0% 0% 0% 0% round 0px)" : clip,
-            opacity: reduce ? 1 : stageOpacity,
-            willChange: "clip-path",
-          }}
-          className="absolute inset-0 bg-black"
-        >
-
-          <motion.div
-            style={{
-              scale: reduce ? 1 : stageScale,
-              filter: reduce ? "none" : stageBrightness,
-            }}
-            className="h-full w-full transform-gpu"
-          >
+      <div className="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden">
+        <div ref={stageLayerRef} className="absolute inset-0 bg-black opacity-0">
+          <div ref={videoFrameRef} className="absolute left-1/2 top-1/2 aspect-video w-full max-w-[177.78svh] -translate-x-1/2 -translate-y-1/2 overflow-hidden bg-black will-change-[clip-path,transform] xl:inset-0 xl:aspect-auto xl:max-w-none xl:translate-x-0 xl:translate-y-0">
             <video
               ref={videoRef}
               src={nearViewport ? VIDEO_SRC : undefined}
@@ -198,11 +188,11 @@ export default function ShowreelReveal() {
               className="h-full w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
-          </motion.div>
+          </div>
 
-          <motion.div
-            style={{ opacity: chromeOpacity }}
-            className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 md:p-10"
+          <div
+            ref={chromeRef}
+            className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 opacity-0 md:p-10"
           >
             <p className="font-display text-2xl uppercase tracking-[0.2em] text-foreground md:text-4xl">
               Director&rsquo;s Cut
@@ -216,60 +206,22 @@ export default function ShowreelReveal() {
               {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
               {muted ? "Sound off" : "Sound on"}
             </button>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
-        {/* Dropping + flipping box */}
-        <motion.div
-          ref={boxRef}
-
-          style={{
-            y: reduce ? 0 : boxY,
-            opacity: boxOpacity,
-            scale: reduce ? 1 : flipScale,
-            boxShadow: glow,
-            perspective: 1400,
-            willChange: "transform, opacity",
-          }}
-          className="relative z-10 h-44 w-44 transform-gpu md:h-60 md:w-60"
+        <div
+          ref={ballRef}
+          className="absolute left-1/2 top-1/2 z-10 aspect-square w-[clamp(76px,11vw,160px)] rounded-full bg-[radial-gradient(circle_at_32%_24%,#ff766b_0%,#e50914_28%,#a90b12_58%,#3a0508_100%)] opacity-0 shadow-[inset_-18px_-25px_30px_rgba(10,0,0,0.48),20px_26px_35px_rgba(0,0,0,0.5)] will-change-transform"
         >
-          <motion.div
-            style={{
-              rotateY: reduce ? 180 : flipY,
-              transformStyle: "preserve-3d",
-            }}
-            className="h-full w-full"
-          >
-            <div
-              className="absolute inset-0 grid place-items-center border border-border bg-card font-mono text-xs uppercase tracking-[0.35em] text-muted-foreground"
-              style={{ backfaceVisibility: "hidden" }}
-            >
-              Archive
-            </div>
-            <div
-              className="absolute inset-0 grid place-items-center overflow-hidden bg-primary font-mono text-xs uppercase tracking-[0.35em] text-primary-foreground"
-              style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-            >
-              <img
-                src={POSTER_SRC}
-                alt=""
-                aria-hidden
-                width={1600}
-                height={912}
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover opacity-70"
-              />
-              <span className="relative">Reel</span>
-            </div>
-          </motion.div>
-        </motion.div>
+          <span className="absolute left-[24%] top-[17%] h-[11%] w-[20%] rotate-[-35deg] rounded-[50%] bg-[#ff9990] blur-sm" />
+        </div>
 
-        <motion.span
-          style={{ opacity: hintOpacity }}
+        <span
+          ref={hintRef}
           className="absolute bottom-[10svh] left-1/2 -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground"
         >
           Keep scrolling
-        </motion.span>
+        </span>
       </div>
     </div>
   );
