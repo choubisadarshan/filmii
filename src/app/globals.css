@@ -56,6 +56,11 @@ html[data-video-fullscreen="true"] [data-site-nav] {
   transition: transform 0.4s ease, opacity 0.4s ease !important;
 }
 
+html[data-video-open="true"] [data-fx="grain"],
+html[data-video-open="true"] [data-fx="spotlight"] {
+  display: none !important;
+}
+
 html {
   scrollbar-gutter: stable;
 }

@@ -41,6 +41,7 @@ export default function RedSpotlight() {
 
   return (
     <div
+      data-fx="spotlight"
       ref={spotlightRef}
       className="pointer-events-none fixed top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full z-10 opacity-0 transition-opacity duration-500 transform-gpu"
       style={{

@@ -6,6 +6,18 @@ export default function FilmGrain() {
   const [patternUrl, setPatternUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    const canSkip = () => {
+      if (typeof window === "undefined") return true;
+      const motionReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+      return motionReduced || coarsePointer;
+    };
+
+    if (canSkip()) {
+      setPatternUrl(null);
+      return;
+    }
+
     const generateGrain = () => {
       const canvas = document.createElement("canvas");
       const patternSize = 64;
@@ -41,21 +53,21 @@ export default function FilmGrain() {
           (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(handle);
         }
       };
-    } else {
-      const timeoutId = setTimeout(generateGrain, 150);
-      return () => clearTimeout(timeoutId);
     }
+
+    const timeoutId = setTimeout(generateGrain, 150);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   if (!patternUrl) return null;
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[999] opacity-[0.035] select-none"
+      data-fx="grain"
+      className="pointer-events-none fixed inset-0 z-[999] transform-gpu opacity-[0.06] select-none"
       style={{
         backgroundImage: `url(${patternUrl})`,
         backgroundRepeat: "repeat",
-        mixBlendMode: "overlay",
       }}
       aria-hidden="true"
     />

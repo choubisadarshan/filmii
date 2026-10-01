@@ -28,7 +28,7 @@ export default function HeroSection() {
 
   // Background visual parallax zoom & brightness reveal on scroll
   const bgScale = useTransform(smoothProgress, [0, 0.8], [1, 1.15]);
-  const bgBrightness = useTransform(smoothProgress, [0, 0.5], ["brightness(0.35)", "brightness(0.55)"]);
+  const dim = useTransform(smoothProgress, [0, 0.5], [0.65, 0.45]);
 
   // --- 3 HORIZONTAL TRACKING SLICES PARALLAX DISPLACEMENT ---
   // Top Slice (Line 1: "WE MAKE" + Brand Tag) -> Shifts Left
@@ -53,9 +53,7 @@ export default function HeroSection() {
           <motion.div
             style={{
               scale: bgScale,
-              filter: bgBrightness,
               transformPerspective: 1000,
-              willChange: "transform, opacity",
             }}
             className="relative w-full h-full transform-gpu"
           >
@@ -65,9 +63,10 @@ export default function HeroSection() {
               fill
               priority
               sizes="100vw"
-              quality={85}
+              quality={75}
               className="object-cover contrast-125 saturate-90"
             />
+            <motion.div style={{ opacity: dim }} className="absolute inset-0 bg-black pointer-events-none" />
           </motion.div>
 
           {/* Vignette & Glitch Edge Lighting */}
@@ -81,7 +80,6 @@ export default function HeroSection() {
           style={{
             opacity: slicesOpacity,
             transformPerspective: 1000,
-            willChange: "transform, opacity",
           }}
           className="relative z-10 max-w-7xl mx-auto w-full flex flex-col items-start justify-center my-auto transform-gpu"
         >

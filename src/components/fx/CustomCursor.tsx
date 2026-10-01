@@ -90,6 +90,7 @@ export default function CustomCursor() {
     <>
       {/* Outer Spring-Animated Red Laser Aura */}
       <motion.div
+        data-fx="cursor"
         className="fixed top-0 left-0 pointer-events-none z-[99998] w-6 h-6 rounded-full bg-[#E50914]/25 blur-[2px]"
         style={{
           x: auraX,
@@ -108,6 +109,7 @@ export default function CustomCursor() {
 
       {/* Central Framer Motion Red Dot Pointer */}
       <motion.div
+        data-fx="cursor"
         className="fixed top-0 left-0 pointer-events-none z-[99999] w-2 h-2 rounded-full bg-[#E50914] shadow-[0_0_10px_#E50914]"
         style={{
           x: dotX,

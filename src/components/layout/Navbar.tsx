@@ -44,14 +44,14 @@ export default function Navbar({ hidden = false }: NavbarProps) {
     <header
       data-site-nav
       aria-hidden={hidden}
-      className={`fixed left-0 right-0 top-0 z-50 border-b transition-[transform,opacity,padding,background-color,border-color] duration-[400ms] ease-in-out ${
+      className={`fixed left-0 right-0 top-0 z-50 border-b transition-[transform,opacity,background-color,border-color] duration-[400ms] ease-in-out ${
         hidden
           ? "pointer-events-none -translate-y-full opacity-0"
           : "translate-y-0 opacity-100"
       } ${
         scrolled
-          ? "bg-[#050505]/95 backdrop-blur-md border-neutral-900 py-4"
-          : "bg-gradient-to-b from-black/90 via-black/40 to-transparent border-transparent py-6"
+          ? "bg-[#050505]/95 backdrop-blur-sm border-neutral-900 py-5"
+          : "bg-gradient-to-b from-black/90 via-black/40 to-transparent border-transparent py-5"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 flex items-center justify-between">
