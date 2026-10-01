@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -12,61 +12,185 @@ import {
   VideoPlayerTimeRange,
 } from "@/components/ui/skiper67";
 
-const VIDEO_SRC = "https://skiper-ui.com/showreel/skiper-ui-showreel.mp4"; // 👉 your video
-const FLIP_DEG = 540; // 540 = crazy spin & lands on back. Use 180 for a single calm flip.
-const FLIP_DUR = 1.5; // seconds
-const CHARGE_MS = 700; // anticipation beat before expanding
-const EXPAND_DUR = 2; // seconds, the smooth transition
+const VIDEO_SRC = "/showcase_video.mp4";
+const POSTER_SRC = "/showcase_poster.jpg";
+
+// FAST TIMELINE (ms). Total ~1.8s
+const DROP_MS = 400;
+const FLIP_MS = 550;
+const CHARGE_MS = 120;
+const EXPAND_S = 0.75;
+const FLIP_DEG = 540;
+
+const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 
 type Stage = "idle" | "drop" | "flip" | "charge" | "full";
+
+const inOverlay = (t: EventTarget | null) =>
+  t instanceof Element && !!t.closest("[data-archive-overlay]");
 
 export default function VisualArchiveReveal() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const triggered = useRef(false);
   const autoOpened = useRef(false);
-  const inView = useInView(wrapRef, { amount: 0.5, once: true });
+  const lastTop = useRef<number | null>(null);
   const reduce = useReducedMotion();
 
-  const [armed, setArmed] = useState(false); // user must scroll first
   const [stage, setStage] = useState<Stage>("idle");
-  const [clipFrom, setClipFrom] = useState("inset(40% 40% 40% 40% round 0px)");
+  const [introDone, setIntroDone] = useState(false);
   const [controlsOn, setControlsOn] = useState(false);
+  const fullReadyRef = useRef(false);
+  // clip-path values must be px only (mixing % and px makes the expand snap)
+  const [clipFrom, setClipFrom] = useState("inset(300px 300px 300px 300px round 0px)");
+  const [clipMid, setClipMid] = useState("inset(160px 240px 160px 240px round 18px)");
 
-  // only arm after the visitor really scrolls (site always starts at Home)
+  const locked = stage === "drop" || stage === "charge" || (stage === "flip" && !introDone);
+
+  // 0) TRIGGER (enter zone OR fast-scroll overshoot) + RESET (replays every pass)
   useEffect(() => {
-    const onScroll = () => window.scrollY > 80 && setArmed(true);
-    onScroll();
+    const check = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const h = window.innerHeight;
+      const pinRange = Math.max(el.offsetHeight - h, 0); // how long the stage stays pinned
+      const prevTop = lastTop.current;
+      lastTop.current = r.top;
+
+      if (triggered.current) {
+        // visitor left the section far enough -> arm it to replay next time
+        if (r.top > h * 0.85 || r.bottom < h * 0.15) {
+          triggered.current = false;
+          autoOpened.current = false;
+          setIntroDone(false);
+          setControlsOn(false);
+          setStage("idle");
+        }
+        return;
+      }
+
+      const inZone = r.top < h * 0.3 && r.bottom > h * 0.5; // section has entered the screen
+      const flungPast = prevTop !== null && prevTop > 0 && r.bottom <= h * 0.5; // overshot downwards
+
+      if (inZone || flungPast) {
+        triggered.current = true;
+        autoOpened.current = false;
+
+        // instantly snap so the stage is pinned (centered) before the animation starts
+        const delta = r.top > 0 ? r.top : r.top < -pinRange ? r.top + pinRange : 0;
+        if (delta) window.scrollBy({ top: delta, behavior: "instant" });
+
+        setIntroDone(false);
+        setControlsOn(false);
+        setStage(reduce ? "flip" : "drop");
+      }
+    };
+
+    const raf = requestAnimationFrame(check);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [reduce]);
+
+  // 1) SCROLL LOCK without overflow:hidden (keeps position:sticky working)
+  useEffect(() => {
+    if (!locked) return;
+    const y = window.scrollY;
+
+    const onWheel = (e: WheelEvent) => e.preventDefault();
+    const onTouch = (e: TouchEvent) => {
+      if (!inOverlay(e.target)) e.preventDefault();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!SCROLL_KEYS.has(e.key)) return;
+      if (e.key === " " && inOverlay(e.target)) return; // keep play/pause key working
+      e.preventDefault();
+    };
+    const hold = () => {
+      if (Math.abs(window.scrollY - y) > 1) window.scrollTo({ top: y, behavior: "instant" });
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchmove", onTouch, { passive: false });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", hold); // scrollbar drag / anything else
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", hold);
+    };
+  }, [locked]);
+
+  useEffect(() => {
+    if (stage !== "full") return;
+
+    fullReadyRef.current = false;
+    const armClose = window.setTimeout(() => {
+      fullReadyRef.current = true;
+    }, 350);
+
+    const onScroll = () => {
+      if (fullReadyRef.current && window.scrollY !== 0) setStage("flip");
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (fullReadyRef.current && (Math.abs(e.deltaY) > 0 || Math.abs(e.deltaX) > 0)) {
+        setStage("flip");
+      }
+    };
+
+    const onTouch = () => {
+      if (fullReadyRef.current) setStage("flip");
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (fullReadyRef.current && SCROLL_KEYS.has(e.key) && !inOverlay(e.target)) setStage("flip");
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("touchmove", onTouch, { passive: true });
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      window.clearTimeout(armClose);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [stage]);
 
   const openFull = useCallback(() => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
     const r = boxRef.current?.getBoundingClientRect();
     if (r) {
-      setClipFrom(
-        `inset(${r.top}px ${window.innerWidth - r.right}px ${
-          window.innerHeight - r.bottom
-        }px ${r.left}px round 0px)`
-      );
+      setClipFrom(`inset(${r.top}px ${w - r.right}px ${h - r.bottom}px ${r.left}px round 0px)`);
     }
+    setClipMid(`inset(${h * 0.2}px ${w * 0.2}px ${h * 0.2}px ${w * 0.2}px round 18px)`);
     setControlsOn(false);
+    setIntroDone(true);
     setStage("full");
   }, []);
 
-  // 1) trigger drop
+  // 2) FIXED TIMELINE: drop -> flip -> charge -> expand
   useEffect(() => {
-    if (inView && armed && stage === "idle") {
-      const t = setTimeout(() => setStage(reduce ? "flip" : "drop"), 0);
-      return () => clearTimeout(t);
-    }
-  }, [inView, armed, stage, reduce]);
+    if (stage !== "drop") return;
+    const t = setTimeout(() => setStage("flip"), DROP_MS);
+    return () => clearTimeout(t);
+  }, [stage]);
 
-  // 2) after flip -> charge -> expand (first time only)
   useEffect(() => {
     if (stage !== "flip" || autoOpened.current) return;
     autoOpened.current = true;
-    const t1 = setTimeout(() => setStage("charge"), reduce ? 0 : FLIP_DUR * 1000 + 150);
-    return () => clearTimeout(t1);
+    const t = setTimeout(() => setStage("charge"), reduce ? 0 : FLIP_MS);
+    return () => clearTimeout(t);
   }, [stage, reduce]);
 
   useEffect(() => {
@@ -75,23 +199,20 @@ export default function VisualArchiveReveal() {
     return () => clearTimeout(t);
   }, [stage, openFull, reduce]);
 
-  // 3) controls fade in only after the expand finishes
+  // 3) controls fade in as the expand finishes
   useEffect(() => {
     if (stage !== "full") return;
-    const t = setTimeout(() => setControlsOn(true), reduce ? 0 : EXPAND_DUR * 1000 - 200);
+    const t = setTimeout(() => setControlsOn(true), reduce ? 0 : EXPAND_S * 1000 - 100);
     return () => clearTimeout(t);
   }, [stage, reduce]);
 
-  // 4) hide navbar + lock scroll
+  // 4) hide navbar while fullscreen
   useEffect(() => {
     if (stage !== "full") return;
     const html = document.documentElement;
-    const prev = document.body.style.overflow;
     html.dataset.videoOpen = "true";
-    document.body.style.overflow = "hidden";
     return () => {
       delete html.dataset.videoOpen;
-      document.body.style.overflow = prev;
     };
   }, [stage]);
 
@@ -108,102 +229,113 @@ export default function VisualArchiveReveal() {
   const hidden = stage === "idle";
 
   return (
-    <div
-      ref={wrapRef}
-      className="relative flex min-h-[70vh] w-full items-start justify-center overflow-hidden"
-      style={{ perspective: 1400 }}
-    >
-      {/* DROP + CHARGE */}
-      <motion.div
-        ref={boxRef}
-        initial={{ y: reduce ? 0 : -700, opacity: 0, scale: 1 }}
-        animate={{
-          y: hidden ? (reduce ? 0 : -700) : 0,
-          opacity: hidden ? 0 : stage === "full" ? 0 : 1,
-          scale: charging ? 1.14 : 1,
-          boxShadow: charging
-            ? "0 0 90px 12px rgba(255,255,255,0.35)"
-            : "0 20px 60px -20px rgba(0,0,0,0.5)",
-        }}
-        transition={{
-          y: { type: "spring", stiffness: 130, damping: 9, mass: 1.2 },
-          opacity: { duration: stage === "full" ? 0.1 : 0.25 },
-          scale: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-          boxShadow: { duration: 0.6 },
-        }}
-        onAnimationComplete={() => stage === "drop" && setStage("flip")}
-        onClick={() => stage === "flip" && openFull()}
-        className="mt-24 h-44 w-44 cursor-pointer md:h-56 md:w-56"
+    // TALL WRAPPER = buffer zone. NO overflow-hidden on this element or any ancestor (breaks sticky).
+    <div ref={wrapRef} className="relative h-[170dvh] w-full bg-[#050505]">
+      {/* PINNED STAGE: box is perfectly centered; label is absolute so it can't push the box */}
+      <div
+        className="sticky top-0 flex h-[100dvh] w-full items-center justify-center overflow-hidden"
+        style={{ perspective: 1400 }}
       >
-        {/* CRAZY FLIP */}
+        <span className="absolute bottom-[12dvh] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.4em] text-neutral-500">
+          Showreel
+        </span>
+
+        {/* DROP + CHARGE */}
         <motion.div
-          className="relative h-full w-full"
-          style={{ transformStyle: "preserve-3d" }}
+          ref={boxRef}
+          initial={{ y: reduce ? 0 : -900, opacity: 0, scale: 1 }}
           animate={{
-            rotateY: flipped ? FLIP_DEG : 0,
-            rotateX: flipped ? [0, 28, -14, 6, 0] : 0,
-            scale: flipped ? [1, 1.3, 0.94, 1.04, 1] : 1,
+            y: hidden ? (reduce ? 0 : -900) : 0,
+            opacity: hidden ? 0 : stage === "full" ? 0 : 1,
+            scale: charging ? 1.12 : 1,
+            boxShadow: charging
+              ? "0 0 90px 12px rgba(229,9,20,0.5)"
+              : "0 20px 60px -20px rgba(0,0,0,0.6)",
           }}
           transition={{
-            rotateY: { duration: reduce ? 0 : FLIP_DUR, ease: [0.34, 1.4, 0.64, 1] },
-            rotateX: { duration: reduce ? 0 : FLIP_DUR, ease: "easeInOut" },
-            scale: { duration: reduce ? 0 : FLIP_DUR, ease: "easeInOut" },
+            y: hidden ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 24, mass: 0.8 },
+            opacity: { duration: stage === "full" ? 0.1 : hidden ? 0 : 0.15 },
+            scale: { duration: 0.12, ease: "easeOut" },
+            boxShadow: { duration: 0.12 },
           }}
+          onClick={() => stage === "flip" && introDone && openFull()}
+          className="h-44 w-44 cursor-pointer md:h-56 md:w-56"
         >
-          <div
-            className="absolute inset-0 grid place-items-center bg-neutral-900 text-xs uppercase tracking-[0.3em] text-white"
-            style={{ backfaceVisibility: "hidden" }}
+          {/* FAST FLIP */}
+          <motion.div
+            className="relative h-full w-full"
+            style={{ transformStyle: "preserve-3d" }}
+            animate={{
+              rotateY: flipped ? FLIP_DEG : 0,
+              rotateX: flipped ? [0, 22, -10, 0] : 0,
+              scale: flipped ? [1, 1.25, 0.96, 1] : 1,
+            }}
+            transition={{
+              rotateY: { duration: reduce || !flipped ? 0 : FLIP_MS / 1000, ease: [0.34, 1.25, 0.64, 1] },
+              rotateX: { duration: reduce || !flipped ? 0 : FLIP_MS / 1000, ease: "easeInOut" },
+              scale: { duration: reduce || !flipped ? 0 : FLIP_MS / 1000, ease: "easeInOut" },
+            }}
           >
-            Archive
-          </div>
-          <div
-            className="absolute inset-0 overflow-hidden bg-black"
-            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-          >
-            <video src={VIDEO_SRC} autoPlay muted loop playsInline className="h-full w-full object-cover" />
-            <span className="absolute bottom-2 left-2 text-[10px] uppercase tracking-widest text-white mix-blend-difference">
-              Play
-            </span>
-          </div>
+            <div
+              className="absolute inset-0 grid place-items-center bg-neutral-900 text-xs uppercase tracking-[0.3em] text-white"
+              style={{ backfaceVisibility: "hidden" }}
+            >
+              Archive
+            </div>
+            <div
+              className="absolute inset-0 overflow-hidden bg-black"
+              style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+            >
+              <video
+                src={VIDEO_SRC}
+                poster={POSTER_SRC}
+                preload="metadata"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover"
+              />
+              <span className="absolute bottom-2 left-2 text-[10px] uppercase tracking-widest text-white mix-blend-difference">
+                Play
+              </span>
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </div>
 
-      {/* SMOOTH TWO-STAGE EXPAND */}
+      {/* FAST SMOOTH EXPAND (box -> mid frame -> fullscreen) */}
       <AnimatePresence>
         {stage === "full" && (
           <motion.div
             key="overlay"
+            data-archive-overlay
             className="fixed left-0 top-0 z-[200] h-[100dvh] w-screen bg-black"
             initial={{ clipPath: clipFrom }}
-            animate={{
-              clipPath: [
-                clipFrom,
-                "inset(22% 22% 22% 22% round 18px)", // mid-size frame
-                "inset(0px 0px 0px 0px round 0px)", // full screen
-              ],
-            }}
+            animate={{ clipPath: [clipFrom, clipMid, "inset(0px 0px 0px 0px round 0px)"] }}
             exit={{
               clipPath: clipFrom,
-              transition: { duration: 1.1, ease: [0.65, 0, 0.35, 1] },
+              transition: { duration: 0.7, ease: [0.65, 0, 0.35, 1] },
             }}
             transition={{
-              duration: reduce ? 0.3 : EXPAND_DUR,
-              times: [0, 0.4, 1],
+              duration: reduce ? 0.2 : EXPAND_S,
+              times: [0, 0.45, 1],
               ease: [
-                [0.6, 0, 0.2, 1],
+                [0.5, 0, 0.2, 1],
                 [0.16, 1, 0.3, 1],
               ],
             }}
           >
             <motion.div
               className="h-full w-full"
-              initial={{ scale: reduce ? 1 : 1.5, filter: "brightness(0.35)" }}
+              initial={{ scale: reduce ? 1 : 1.35, filter: "brightness(0.4)" }}
               animate={{ scale: 1, filter: "brightness(1)" }}
-              transition={{ duration: reduce ? 0.3 : EXPAND_DUR, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: reduce ? 0.2 : EXPAND_S, ease: [0.22, 1, 0.36, 1] }}
             >
               <VideoPlayer style={{ width: "100%", height: "100%" }}>
                 <VideoPlayerContent
                   src={VIDEO_SRC}
+                  poster={POSTER_SRC}
                   autoPlay
                   slot="media"
                   className="h-full w-full object-cover"
@@ -212,14 +344,14 @@ export default function VisualArchiveReveal() {
                 <button
                   aria-label="Close video"
                   onClick={() => setStage("flip")}
-                  className={`absolute right-4 top-4 z-10 rounded-full p-2 text-white mix-blend-exclusion transition-opacity duration-700 ${
+                  className={`absolute right-4 top-4 z-10 rounded-full p-2 text-white mix-blend-exclusion transition-opacity duration-500 ${
                     controlsOn ? "opacity-100" : "pointer-events-none opacity-0"
                   }`}
                 >
                   <Plus className="size-6 rotate-45" />
                 </button>
                 <VideoPlayerControlBar
-                  className={`absolute bottom-0 left-0 flex w-full items-center px-5 mix-blend-exclusion transition-opacity duration-700 md:px-10 md:py-5 ${
+                  className={`absolute bottom-0 left-0 flex w-full items-center px-5 mix-blend-exclusion transition-opacity duration-500 md:px-10 md:py-5 ${
                     controlsOn ? "opacity-100" : "pointer-events-none opacity-0"
                   }`}
                 >

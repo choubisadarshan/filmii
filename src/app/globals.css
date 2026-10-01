@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: var(--font-bebas), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+}
+
 @layer base {
   :root {
     --background: #050505;
@@ -8,47 +13,53 @@
     --border: #141414;
     --accent-red: #E50914;
   }
+
+  html {
+    scroll-behavior: smooth;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    overflow-x: clip;
+    font-family: var(--font-inter), sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    cursor: none !important;
+  }
+
+  *::before,
+  *::after,
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    cursor: none !important;
+  }
+
+  ::selection {
+    background-color: var(--accent-red);
+    color: #ffffff;
+  }
 }
 
-@theme {
-  --color-studio-black: #050505;
-  --color-studio-dark: #0A0A0A;
-  --color-studio-charcoal: #121212;
-  --color-studio-border: #1C1C1C;
-  --color-off-white: #F3F3F0;
-  --color-muted-gray: #888884;
-  --color-accent-red: #E50914;
-  --font-display: var(--font-bebas), sans-serif;
-  --font-sans: var(--font-inter), sans-serif;
-}
-
-/* Hide standard cursor for custom red pointer */
-*, *::before, *::after, html, body, button, a, input, select, textarea {
-  cursor: none !important;
+html[data-video-open="true"] [data-site-nav],
+html[data-video-fullscreen="true"] [data-site-nav] {
+  transform: translateY(-100%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: transform 0.4s ease, opacity 0.4s ease !important;
 }
 
 html {
-  scroll-behavior: smooth;
-  background-color: #050505;
-  color: #F3F3F0;
-  selection-background-color: #E50914;
-  selection-color: #FFFFFF;
+  scrollbar-gutter: stable;
 }
 
-::selection {
-  background-color: #E50914;
-  color: #FFFFFF;
-}
-
-body {
-  background-color: #050505;
-  color: #F3F3F0;
-  overflow-x: clip;
-  font-family: var(--font-inter), sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Editorial subtle scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
 }
@@ -66,12 +77,19 @@ body {
   background: #E50914;
 }
 
-/* Film Grain Overlay */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .grain-overlay {
   pointer-events: none;
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   z-index: 999;
@@ -79,17 +97,12 @@ body {
   mix-blend-mode: overlay;
 }
 
-/* Scanlines overlay */
 .scanlines {
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.4) 50%
-  );
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
   background-size: 100% 4px;
   pointer-events: none;
 }
 
-/* REC Dot Pulse */
 @keyframes recPulse {
   0% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.3; transform: scale(0.9); }
@@ -100,34 +113,6 @@ body {
   animation: recPulse 1.4s infinite ease-in-out;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Fullscreen Video Reveal Utilities */
-html[data-video-open="true"],
-html[data-video-fullscreen="true"] {
-  overflow: hidden !important;
-}
-
-html[data-video-open="true"] body,
-html[data-video-fullscreen="true"] body {
-  overflow: hidden !important;
-}
-
-html[data-video-open="true"] [data-site-nav],
-html[data-video-fullscreen="true"] [data-site-nav] {
-  transform: translateY(-100%) !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: transform 0.4s ease, opacity 0.4s ease !important;
-}
-
-/* 3D Transform Utilities for Square Flip */
 .perspective-1000 {
   perspective: 1000px;
 }
@@ -140,4 +125,3 @@ html[data-video-fullscreen="true"] [data-site-nav] {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
-
