@@ -1,369 +1,276 @@
 ﻿"use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Plus } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  VideoPlayer,
-  VideoPlayerContent,
-  VideoPlayerControlBar,
-  VideoPlayerMuteButton,
-  VideoPlayerPlayButton,
-  VideoPlayerTimeRange,
-} from "@/components/ui/skiper67";
-
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import { Volume2, VolumeX } from "lucide-react";
 const VIDEO_SRC = "/showcase_video.mp4";
 const POSTER_SRC = "/showcase_poster.jpg";
 
-// FAST TIMELINE (ms). Total ~1.8s
-const DROP_MS = 400;
-const FLIP_MS = 550;
-const CHARGE_MS = 120;
-const EXPAND_S = 0.75;
-const FLIP_DEG = 540;
+/**
+ * Scroll-DRIVEN showreel reveal.
+ *
+ * Design rules that keep it smooth at any scroll speed:
+ *  1. Every stage is a function of scroll progress (0..1) — never a setTimeout
+ *     chain. Fast scrolling can therefore never "skip" or desync a stage.
+ *  2. The page scroll is never hijacked: no wheel/touch preventDefault, no
+ *     scrollTo/scrollBy correction, no scroll "hold" listener.
+ *  3. The expanded video fills the pinned stage (a sticky block inside the
+ *     page), not a `position: fixed` layer — so it never takes over a phone
+ *     screen and the rest of the page stays reachable.
+ *  4. Exactly one <video> element exists, it is muted + playsInline, its src is
+ *     attached only when the section is near the viewport, and it is paused
+ *     whenever the reveal is not open.
+ */
 
-const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
+// Scroll-progress breakpoints for each stage.
+const DROP_END = 0.18;
+const FLIP_START = 0.18;
+const FLIP_END = 0.42;
+const OPEN_START = 0.42;
+const OPEN_END = 0.68;
 
-type Stage = "idle" | "drop" | "flip" | "charge" | "full";
-
-const inOverlay = (t: EventTarget | null) =>
-  t instanceof Element && !!t.closest("[data-archive-overlay]");
-
-export default function VisualArchiveReveal() {
+export default function ShowreelReveal() {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
-  const triggered = useRef(false);
-  const autoOpened = useRef(false);
-  const lastTop = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const reduce = useReducedMotion();
 
-  const [stage, setStage] = useState<Stage>("idle");
-  const [introDone, setIntroDone] = useState(false);
-  const [controlsOn, setControlsOn] = useState(false);
-  const fullReadyRef = useRef(false);
-  // clip-path values must be px only (mixing % and px makes the expand snap)
-  const [clipFrom, setClipFrom] = useState("inset(300px 300px 300px 300px round 0px)");
-  const [clipMid, setClipMid] = useState("inset(160px 240px 160px 240px round 18px)");
+  const [nearViewport, setNearViewport] = useState(false);
+  const [muted, setMuted] = useState(true);
 
-  const locked = stage === "drop" || stage === "charge" || (stage === "flip" && !introDone);
+  // Progress through the tall wrapper: 0 = section top hits the top of the
+  // screen, 1 = its bottom does.
+  const { scrollYProgress } = useScroll({
+    target: wrapRef,
+    offset: ["start start", "end end"],
+  });
 
-  // 0) TRIGGER (enter zone OR fast-scroll overshoot) + RESET (replays every pass)
+
+  // --- Stage 1: the box drops in -------------------------------------------
+  const boxY = useTransform(scrollYProgress, [0, DROP_END], ["-55vh", "0vh"]);
+  const boxOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.05, OPEN_START, OPEN_START + 0.04],
+    [0, 1, 1, 0],
+  );
+
+  // --- Stage 2: the flip ----------------------------------------------------
+  const flipY = useTransform(scrollYProgress, [FLIP_START, FLIP_END], [0, 540]);
+  const flipScale = useTransform(
+    scrollYProgress,
+    [FLIP_START, FLIP_START + 0.12, FLIP_END, OPEN_START + 0.04],
+    [1, 1.18, 1, 1.3],
+  );
+  const glow = useTransform(
+    scrollYProgress,
+    [FLIP_END - 0.06, OPEN_START],
+    ["0 20px 60px -20px rgba(0,0,0,0.6)", "0 0 90px 12px hsl(357 92% 47% / 0.55)"],
+  );
+
+  // --- Stage 3: the expand --------------------------------------------------
+  // The clip-path starts exactly where the box sits, so the handoff is seamless.
+  // Percentage-only inset: mixing % and px is what makes an expand snap
+  // instead of glide.
+  const [startInset, setStartInset] = useState({ y: 38, x: 38 });
   useEffect(() => {
-    const check = () => {
-      const el = wrapRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const h = window.innerHeight;
-      const pinRange = Math.max(el.offsetHeight - h, 0); // how long the stage stays pinned
-      const prevTop = lastTop.current;
-      lastTop.current = r.top;
-
-      if (triggered.current) {
-        // visitor left the section far enough -> arm it to replay next time
-        if (r.top > h * 0.85 || r.bottom < h * 0.15) {
-          triggered.current = false;
-          autoOpened.current = false;
-          setIntroDone(false);
-          setControlsOn(false);
-          setStage("idle");
-        }
-        return;
-      }
-
-      const inZone = r.top < h * 0.3 && r.bottom > h * 0.5; // section has entered the screen
-      const flungPast = prevTop !== null && prevTop > 0 && r.bottom <= h * 0.5; // overshot downwards
-
-      if (inZone || flungPast) {
-        triggered.current = true;
-        autoOpened.current = false;
-
-        // instantly snap so the stage is pinned (centered) before the animation starts
-        const delta = r.top > 0 ? r.top : r.top < -pinRange ? r.top + pinRange : 0;
-        if (delta) window.scrollBy({ top: delta, behavior: "instant" });
-
-        setIntroDone(false);
-        setControlsOn(false);
-        setStage(reduce ? "flip" : "drop");
-      }
+    const measure = () => {
+      const stage = stageRef.current;
+      const box = boxRef.current;
+      if (!stage || !box) return;
+      const s = stage.getBoundingClientRect();
+      const b = box.getBoundingClientRect();
+      if (!s.width || !s.height) return;
+      setStartInset({
+        y: Math.max(0, ((s.height - b.height) / 2 / s.height) * 100),
+        x: Math.max(0, ((s.width - b.width) / 2 / s.width) * 100),
+      });
     };
-
-    const raf = requestAnimationFrame(check);
-    window.addEventListener("scroll", check, { passive: true });
-    window.addEventListener("resize", check);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", check);
-      window.removeEventListener("resize", check);
-    };
-  }, [reduce]);
-
-  // 1) SCROLL LOCK without overflow:hidden (keeps position:sticky working)
-  useEffect(() => {
-    if (!locked) return;
-    const y = window.scrollY;
-
-    const onWheel = (e: WheelEvent) => e.preventDefault();
-    const onTouch = (e: TouchEvent) => {
-      if (!inOverlay(e.target)) e.preventDefault();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (!SCROLL_KEYS.has(e.key)) return;
-      if (e.key === " " && inOverlay(e.target)) return; // keep play/pause key working
-      e.preventDefault();
-    };
-    const hold = () => {
-      if (Math.abs(window.scrollY - y) > 1) window.scrollTo({ top: y, behavior: "instant" });
-    };
-
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("touchmove", onTouch, { passive: false });
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", hold); // scrollbar drag / anything else
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchmove", onTouch);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", hold);
-    };
-  }, [locked]);
-
-  useEffect(() => {
-    if (stage !== "full") return;
-
-    fullReadyRef.current = false;
-    const armClose = window.setTimeout(() => {
-      fullReadyRef.current = true;
-    }, 350);
-
-    const onScroll = () => {
-      if (fullReadyRef.current && window.scrollY !== 0) setStage("flip");
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      if (fullReadyRef.current && (Math.abs(e.deltaY) > 0 || Math.abs(e.deltaX) > 0)) {
-        setStage("flip");
-      }
-    };
-
-    const onTouch = () => {
-      if (fullReadyRef.current) setStage("flip");
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (fullReadyRef.current && SCROLL_KEYS.has(e.key) && !inOverlay(e.target)) setStage("flip");
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("touchmove", onTouch, { passive: true });
-    window.addEventListener("keydown", onKey);
-
-    return () => {
-      window.clearTimeout(armClose);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchmove", onTouch);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [stage]);
-
-  const openFull = useCallback(() => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const r = boxRef.current?.getBoundingClientRect();
-    if (r) {
-      setClipFrom(`inset(${r.top}px ${w - r.right}px ${h - r.bottom}px ${r.left}px round 0px)`);
-    }
-    setClipMid(`inset(${h * 0.2}px ${w * 0.2}px ${h * 0.2}px ${w * 0.2}px round 18px)`);
-    setControlsOn(false);
-    setIntroDone(true);
-    setStage("full");
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // 2) FIXED TIMELINE: drop -> flip -> charge -> expand
-  useEffect(() => {
-    if (stage !== "drop") return;
-    const t = setTimeout(() => setStage("flip"), DROP_MS);
-    return () => clearTimeout(t);
-  }, [stage]);
+  const insetY = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [startInset.y, 0]);
+  const insetX = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [startInset.x, 0]);
+  const radius = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [20, 0]);
+  const clip = useTransform(
+    [insetY, insetX, radius],
+    ([y, x, r]: number[]) => `inset(${y}% ${x}% ${y}% ${x}% round ${r}px)`,
+  );
+  // Hidden until the box has finished flipping, so it can never peek through.
+  const stageOpacity = useTransform(
+    scrollYProgress,
+    [OPEN_START - 0.01, OPEN_START + 0.01],
+    [0, 1],
+  );
+  const stageScale = useTransform(scrollYProgress, [OPEN_START, OPEN_END], [1.25, 1]);
+  const stageBrightness = useTransform(
+    scrollYProgress,
+    [OPEN_START, OPEN_END],
+    ["brightness(0.35)", "brightness(1)"],
+  );
+  const chromeOpacity = useTransform(scrollYProgress, [OPEN_END - 0.04, OPEN_END], [0, 1]);
+  const hintOpacity = useTransform(scrollYProgress, [0, 0.04, OPEN_START], [1, 1, 0]);
 
-  useEffect(() => {
-    if (stage !== "flip" || autoOpened.current) return;
-    autoOpened.current = true;
-    const t = setTimeout(() => setStage("charge"), reduce ? 0 : FLIP_MS);
-    return () => clearTimeout(t);
-  }, [stage, reduce]);
 
+  // Attach the video source only when the section is close, so scrolling past
+  // the top of the page never pays for a video decode.
   useEffect(() => {
-    if (stage !== "charge") return;
-    const t = setTimeout(openFull, reduce ? 0 : CHARGE_MS);
-    return () => clearTimeout(t);
-  }, [stage, openFull, reduce]);
+    const el = wrapRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setNearViewport(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "400px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
-  // 3) controls fade in as the expand finishes
-  useEffect(() => {
-    if (stage !== "full") return;
-    const t = setTimeout(() => setControlsOn(true), reduce ? 0 : EXPAND_S * 1000 - 100);
-    return () => clearTimeout(t);
-  }, [stage, reduce]);
+  // Play only while the reveal is actually open; pause otherwise. This is the
+  // single biggest win against scroll lag.
+  useMotionValueEvent(scrollYProgress, "change", (p) => {
+    const v = videoRef.current;
+    if (!v) return;
+    const shouldPlay = p > OPEN_START - 0.04 && p < 1;
+    if (shouldPlay && v.paused) void v.play().catch(() => {});
+    if (!shouldPlay && !v.paused) v.pause();
+  });
 
-  // 4) hide navbar while fullscreen
-  useEffect(() => {
-    if (stage !== "full") return;
-    const html = document.documentElement;
-    html.dataset.videoOpen = "true";
-    return () => {
-      delete html.dataset.videoOpen;
-    };
-  }, [stage]);
-
-  // 5) Escape closes
-  useEffect(() => {
-    if (stage !== "full") return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setStage("flip");
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [stage]);
-
-  const flipped = stage !== "idle" && stage !== "drop";
-  const charging = stage === "charge";
-  const hidden = stage === "idle";
+  const toggleSound = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    if (!v.muted) v.volume = 1;
+    setMuted(v.muted);
+  };
 
   return (
-    // TALL WRAPPER = buffer zone. NO overflow-hidden on this element or any ancestor (breaks sticky).
-    <div ref={wrapRef} className="relative h-[170dvh] w-full bg-[#050505]">
-      {/* PINNED STAGE: box is perfectly centered; label is absolute so it can't push the box */}
+    // Tall wrapper = the scroll budget for the whole sequence.
+    // No `overflow: hidden` here or on any ancestor, or sticky stops working.
+    <div ref={wrapRef} className="relative h-[280vh] w-full bg-background">
       <div
-        className="sticky top-0 flex h-[100dvh] w-full items-center justify-center overflow-hidden"
-        style={{ perspective: 1400 }}
+        ref={stageRef}
+        className="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden"
       >
-        <span className="absolute bottom-[12dvh] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.4em] text-neutral-500">
-          Showreel
-        </span>
+        {/* Expanding video stage — fills this pinned block, never the device */}
+        <motion.div
+          style={{
+            clipPath: reduce ? "inset(0% 0% 0% 0% round 0px)" : clip,
+            opacity: reduce ? 1 : stageOpacity,
+            willChange: "clip-path",
+          }}
+          className="absolute inset-0 bg-black"
+        >
 
-        {/* DROP + CHARGE */}
+          <motion.div
+            style={{
+              scale: reduce ? 1 : stageScale,
+              filter: reduce ? "none" : stageBrightness,
+            }}
+            className="h-full w-full transform-gpu"
+          >
+            <video
+              ref={videoRef}
+              src={nearViewport ? VIDEO_SRC : undefined}
+              poster={POSTER_SRC}
+              preload="none"
+              muted
+              loop
+              playsInline
+              disablePictureInPicture
+              controlsList="nodownload noplaybackrate nofullscreen"
+              className="h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+          </motion.div>
+
+          <motion.div
+            style={{ opacity: chromeOpacity }}
+            className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 md:p-10"
+          >
+            <p className="font-display text-2xl uppercase tracking-[0.2em] text-foreground md:text-4xl">
+              Director&rsquo;s Cut
+            </p>
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={muted ? "Unmute showreel" : "Mute showreel"}
+              className="flex items-center gap-2 rounded-full border border-border bg-card/70 px-4 py-2 font-mono text-xs uppercase tracking-widest text-foreground backdrop-blur-md transition-colors hover:bg-primary hover:text-primary-foreground"
+            >
+              {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+              {muted ? "Sound off" : "Sound on"}
+            </button>
+          </motion.div>
+        </motion.div>
+
+        {/* Dropping + flipping box */}
         <motion.div
           ref={boxRef}
-          initial={{ y: reduce ? 0 : -900, opacity: 0, scale: 1 }}
-          animate={{
-            y: hidden ? (reduce ? 0 : -900) : 0,
-            opacity: hidden ? 0 : stage === "full" ? 0 : 1,
-            scale: charging ? 1.12 : 1,
-            boxShadow: charging
-              ? "0 0 90px 12px rgba(229,9,20,0.5)"
-              : "0 20px 60px -20px rgba(0,0,0,0.6)",
+
+          style={{
+            y: reduce ? 0 : boxY,
+            opacity: boxOpacity,
+            scale: reduce ? 1 : flipScale,
+            boxShadow: glow,
+            perspective: 1400,
+            willChange: "transform, opacity",
           }}
-          transition={{
-            y: hidden ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 24, mass: 0.8 },
-            opacity: { duration: stage === "full" ? 0.1 : hidden ? 0 : 0.15 },
-            scale: { duration: 0.12, ease: "easeOut" },
-            boxShadow: { duration: 0.12 },
-          }}
-          onClick={() => stage === "flip" && introDone && openFull()}
-          className="h-44 w-44 cursor-pointer md:h-56 md:w-56"
+          className="relative z-10 h-44 w-44 transform-gpu md:h-60 md:w-60"
         >
-          {/* FAST FLIP */}
           <motion.div
-            className="relative h-full w-full"
-            style={{ transformStyle: "preserve-3d" }}
-            animate={{
-              rotateY: flipped ? FLIP_DEG : 0,
-              rotateX: flipped ? [0, 22, -10, 0] : 0,
-              scale: flipped ? [1, 1.25, 0.96, 1] : 1,
+            style={{
+              rotateY: reduce ? 180 : flipY,
+              transformStyle: "preserve-3d",
             }}
-            transition={{
-              rotateY: { duration: reduce || !flipped ? 0 : FLIP_MS / 1000, ease: [0.34, 1.25, 0.64, 1] },
-              rotateX: { duration: reduce || !flipped ? 0 : FLIP_MS / 1000, ease: "easeInOut" },
-              scale: { duration: reduce || !flipped ? 0 : FLIP_MS / 1000, ease: "easeInOut" },
-            }}
+            className="h-full w-full"
           >
             <div
-              className="absolute inset-0 grid place-items-center bg-neutral-900 text-xs uppercase tracking-[0.3em] text-white"
+              className="absolute inset-0 grid place-items-center border border-border bg-card font-mono text-xs uppercase tracking-[0.35em] text-muted-foreground"
               style={{ backfaceVisibility: "hidden" }}
             >
               Archive
             </div>
             <div
-              className="absolute inset-0 overflow-hidden bg-black"
+              className="absolute inset-0 grid place-items-center overflow-hidden bg-primary font-mono text-xs uppercase tracking-[0.35em] text-primary-foreground"
               style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
             >
-              <video
-                src={VIDEO_SRC}
-                poster={POSTER_SRC}
-                preload="metadata"
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="h-full w-full object-cover"
+              <img
+                src={POSTER_SRC}
+                alt=""
+                aria-hidden
+                width={1600}
+                height={912}
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover opacity-70"
               />
-              <span className="absolute bottom-2 left-2 text-[10px] uppercase tracking-widest text-white mix-blend-difference">
-                Play
-              </span>
+              <span className="relative">Reel</span>
             </div>
           </motion.div>
         </motion.div>
-      </div>
 
-      {/* FAST SMOOTH EXPAND (box -> mid frame -> fullscreen) */}
-      <AnimatePresence>
-        {stage === "full" && (
-          <motion.div
-            key="overlay"
-            data-archive-overlay
-            className="fixed left-0 top-0 z-[200] h-[100dvh] w-screen bg-black"
-            initial={{ clipPath: clipFrom }}
-            animate={{ clipPath: [clipFrom, clipMid, "inset(0px 0px 0px 0px round 0px)"] }}
-            exit={{
-              clipPath: clipFrom,
-              transition: { duration: 0.7, ease: [0.65, 0, 0.35, 1] },
-            }}
-            transition={{
-              duration: reduce ? 0.2 : EXPAND_S,
-              times: [0, 0.45, 1],
-              ease: [
-                [0.5, 0, 0.2, 1],
-                [0.16, 1, 0.3, 1],
-              ],
-            }}
-          >
-            <motion.div
-              className="h-full w-full"
-              initial={{ scale: reduce ? 1 : 1.35, filter: "brightness(0.4)" }}
-              animate={{ scale: 1, filter: "brightness(1)" }}
-              transition={{ duration: reduce ? 0.2 : EXPAND_S, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <VideoPlayer style={{ width: "100%", height: "100%" }}>
-                <VideoPlayerContent
-                  src={VIDEO_SRC}
-                  poster={POSTER_SRC}
-                  autoPlay
-                  slot="media"
-                  className="h-full w-full object-cover"
-                  style={{ width: "100%", height: "100%" }}
-                />
-                <button
-                  aria-label="Close video"
-                  onClick={() => setStage("flip")}
-                  className={`absolute right-4 top-4 z-10 rounded-full p-2 text-white mix-blend-exclusion transition-opacity duration-500 ${
-                    controlsOn ? "opacity-100" : "pointer-events-none opacity-0"
-                  }`}
-                >
-                  <Plus className="size-6 rotate-45" />
-                </button>
-                <VideoPlayerControlBar
-                  className={`absolute bottom-0 left-0 flex w-full items-center px-5 mix-blend-exclusion transition-opacity duration-500 md:px-10 md:py-5 ${
-                    controlsOn ? "opacity-100" : "pointer-events-none opacity-0"
-                  }`}
-                >
-                  <VideoPlayerPlayButton className="h-4 bg-transparent" />
-                  <VideoPlayerTimeRange className="bg-transparent" />
-                  <VideoPlayerMuteButton className="size-4 bg-transparent" />
-                </VideoPlayerControlBar>
-              </VideoPlayer>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <motion.span
+          style={{ opacity: hintOpacity }}
+          className="absolute bottom-[10svh] left-1/2 -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground"
+        >
+          Keep scrolling
+        </motion.span>
+      </div>
     </div>
   );
 }
