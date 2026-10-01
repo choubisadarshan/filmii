@@ -32,7 +32,7 @@ export default function AboutSection() {
         >
           <div>
             <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
-              05 / STUDIO MANIFESTO
+              06 / STUDIO MANIFESTO
             </span>
             <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white">
               BRAND <span className="text-neutral-500">STORY</span>
@@ -51,7 +51,7 @@ export default function AboutSection() {
             className="lg:col-span-7 space-y-8"
           >
             <h3 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white leading-[0.9]">
-              WE DON'T JUST FILM. <br />
+              WE DON&apos;T JUST FILM. <br />
               <span className="text-[#E50914]">WE CREATE CULTURE.</span>
             </h3>
 

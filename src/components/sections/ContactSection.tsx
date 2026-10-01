@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, Phone, Mail, MapPin, MessageSquare, Check, ArrowRight } from "lucide-react";
+import { Phone, Mail, MapPin, MessageSquare, Check, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useSound } from "@/components/fx/SoundProvider";
 
@@ -59,11 +59,11 @@ export default function ContactSection() {
           className="max-w-4xl mx-auto text-center mb-20 space-y-6"
         >
           <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block">
-            06 / START A SESSION
+            07 / START A SESSION
           </span>
 
           <h2 className="font-display text-6xl sm:text-8xl lg:text-9xl tracking-wider uppercase text-white leading-[0.88]">
-            LET'S MAKE <br />
+            LET&apos;S MAKE <br />
             <span className="text-white">SOMETHING</span> <br />
             <span className="text-[#E50914]">WORTH WATCHING.</span>
           </h2>

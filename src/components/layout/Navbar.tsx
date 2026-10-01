@@ -7,14 +7,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, VolumeX, ShoppingBag, Menu, X } from "lucide-react";
 
 interface NavbarProps {
-  introActive?: boolean;
+  hidden?: boolean;
 }
 
-export default function Navbar({ introActive = false }: NavbarProps) {
+export default function Navbar({ hidden = false }: NavbarProps) {
   const { soundEnabled, toggleSound, playHoverSound, playBeepSound } = useSound();
   const { isCartOpen, setIsCartOpen, totalItems } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMenuOpen = mobileMenuOpen && !hidden;
 
   useEffect(() => {
     let ticking = false;
@@ -41,9 +42,12 @@ export default function Navbar({ introActive = false }: NavbarProps) {
 
   return (
     <header
-      aria-hidden={introActive}
-      inert={introActive}
-      className={`fixed left-0 right-0 top-0 z-50 border-b transition-[transform,padding,background-color,border-color] duration-300 ${introActive ? "pointer-events-none -translate-y-full" : "translate-y-0"} ${
+      aria-hidden={hidden}
+      className={`fixed left-0 right-0 top-0 z-50 border-b transition-[transform,opacity,padding,background-color,border-color] duration-[400ms] ease-in-out ${
+        hidden
+          ? "pointer-events-none -translate-y-full opacity-0"
+          : "translate-y-0 opacity-100"
+      } ${
         scrolled
           ? "bg-[#050505]/95 backdrop-blur-md border-neutral-900 py-4"
           : "bg-gradient-to-b from-black/90 via-black/40 to-transparent border-transparent py-6"
@@ -124,18 +128,18 @@ export default function Navbar({ introActive = false }: NavbarProps) {
 
           {/* Mobile Menu Button */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onClick={() => setMobileMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu Drawer */}
       <AnimatePresence>
-        {mobileMenuOpen && (
+        {isMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}

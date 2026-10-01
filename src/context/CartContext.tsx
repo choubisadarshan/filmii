@@ -39,7 +39,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("onset_rental_cart");
-      if (saved) setCart(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        queueMicrotask(() => setCart(parsed));
+      }
     } catch {
       // LocalStorage fallback
     }

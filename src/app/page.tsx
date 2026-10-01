@@ -22,26 +22,22 @@ const ContactSection = dynamic(() => import("@/components/sections/ContactSectio
 const Footer = dynamic(() => import("@/components/layout/Footer"));
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCinematicIntroActive, setIsCinematicIntroActive] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
 
   return (
     <SoundProvider>
       <CartProvider>
         {/* Initial Film Slate Loader */}
-        <LoadingScreen onComplete={() => setIsLoading(false)} />
+        <LoadingScreen />
 
         {/* Global Film Grain Overlay & Red Spotlight */}
         <FilmGrain />
         <RedSpotlight />
         <CustomCursor />
 
-        <div
-          inert={isCinematicIntroActive}
-          className="relative min-h-screen bg-black font-sans text-neutral-100"
-        >
+        <div className="relative min-h-screen bg-black font-sans text-neutral-100">
           {/* Header Navigation */}
-          <Navbar introActive={isCinematicIntroActive} />
+          <Navbar hidden={navHidden} />
 
           {/* Slide-out Rental Cart Drawer */}
           <CartDrawer />
@@ -50,7 +46,7 @@ export default function Home() {
           <main>
             <HeroSection />
             <ServicesSection />
-            <PortfolioSection onIntroActiveChange={setIsCinematicIntroActive} />
+            <PortfolioSection onFullscreenChange={setNavHidden} />
             <EquipmentSection />
             <RateCalculator />
             <AboutSection />

@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
+
+function subscribe(callback: () => void) {
+  const mql = window.matchMedia("(pointer: coarse), (max-width: 767px)");
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
+
+function getSnapshot() {
+  return window.matchMedia("(pointer: coarse), (max-width: 767px)").matches;
+}
+
+function getServerSnapshot() {
+  return false;
+}
 
 export default function CustomCursor() {
   const [isHovered, setIsHovered] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   // Framer Motion continuous motion values for ultra-smooth tracking
   const mouseX = useMotionValue(-100);
@@ -23,11 +37,7 @@ export default function CustomCursor() {
   const dotY = useSpring(mouseY, dotSpringConfig);
 
   useEffect(() => {
-    // Disable on touch-only devices and mobile screens
-    if (typeof window !== "undefined" && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768)) {
-      setIsMobile(true);
-      return;
-    }
+    if (isMobile) return;
 
     let isScheduled = false;
     let pendingTarget: HTMLElement | null = null;
@@ -72,7 +82,7 @@ export default function CustomCursor() {
       window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [mouseX, mouseY]);
+  }, [mouseX, mouseY, isMobile]);
 
   if (isMobile) return null;
 

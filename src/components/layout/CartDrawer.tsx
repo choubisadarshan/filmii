@@ -14,7 +14,6 @@ export default function CartDrawer() {
     setIsCartOpen,
     removeFromCart,
     updateDays,
-    updateQuantity,
     totalEstimate,
     clearCart,
   } = useCart();

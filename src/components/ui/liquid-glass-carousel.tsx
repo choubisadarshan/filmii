@@ -1416,8 +1416,11 @@ export function LiquidGlassCarousel({
   const current = items[active] ?? items[0];
   const onActiveChangeRef = useRef(onActiveChange);
   const onFocusChangeRef = useRef(onFocusChange);
-  onActiveChangeRef.current = onActiveChange;
-  onFocusChangeRef.current = onFocusChange;
+
+  useEffect(() => {
+    onActiveChangeRef.current = onActiveChange;
+    onFocusChangeRef.current = onFocusChange;
+  }, [onActiveChange, onFocusChange]);
 
   useEffect(() => {
     const mount = mountRef.current;

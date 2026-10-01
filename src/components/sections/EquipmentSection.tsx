@@ -49,7 +49,7 @@ export default function EquipmentSection() {
         >
           <div>
             <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
-              03 / CINEMA GEAR / RENTAL
+              04 / CINEMA GEAR / RENTAL
             </span>
             <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white">
               EQUIPMENT
@@ -131,7 +131,7 @@ export default function EquipmentSection() {
               NEED SPECIFIC GEAR?
             </h3>
             <p className="font-sans text-neutral-400 text-sm sm:text-base font-light leading-relaxed">
-              Tell us what you're shooting and we'll help build the right kit.
+              Tell us what you&apos;re shooting and we&apos;ll help build the right kit.
             </p>
           </div>
 

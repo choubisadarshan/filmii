@@ -11,8 +11,10 @@ export default function LoadingScreen({ onComplete }: { onComplete?: () => void 
   useEffect(() => {
     // Skip loader on repeat visits in same session
     if (typeof window !== "undefined" && sessionStorage.getItem("onset_loader_seen")) {
-      setIsDone(true);
-      if (onComplete) onComplete();
+      queueMicrotask(() => {
+        setIsDone(true);
+        if (onComplete) onComplete();
+      });
       return;
     }
 

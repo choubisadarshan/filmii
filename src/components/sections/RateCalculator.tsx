@@ -28,7 +28,7 @@ export default function RateCalculator() {
     if (cameraTier === "red") cameraCost = 850;
     if (cameraTier === "arri") cameraCost = 1250;
 
-    let vfxCost = vfxTier ? 1200 : 0;
+    const vfxCost = vfxTier ? 1200 : 0;
 
     const totalPerDay = base + crewCost + cameraCost;
     return totalPerDay * days + vfxCost;
@@ -58,7 +58,7 @@ export default function RateCalculator() {
         >
           <div>
             <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
-              04 / PRODUCTION ESTIMATOR
+              05 / PRODUCTION ESTIMATOR
             </span>
             <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white leading-[0.9]">
               PLAN YOUR <br className="hidden sm:block" />
