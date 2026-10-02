@@ -7,11 +7,15 @@ interface PortfolioSectionProps {
   onFullscreenChange?: (hidden: boolean) => void;
 }
 
-export default function PortfolioSection({}: PortfolioSectionProps) {
+export default function PortfolioSection({ onFullscreenChange }: PortfolioSectionProps) {
   return (
     <section id="work" className="relative bg-[#050505] text-white">
       <SectionBanner />
-      <VisualArchiveReveal />
+      <VisualArchiveReveal
+        videoSrc="/showcase_video.mp4"
+        posterSrc="/showcase_poster.jpg"
+        onFullscreenChange={onFullscreenChange}
+      />
     </section>
   );
 }
