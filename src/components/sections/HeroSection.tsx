@@ -32,13 +32,12 @@ export default function HeroSection() {
 
   // --- 3 HORIZONTAL TRACKING SLICES PARALLAX DISPLACEMENT ---
   // Top Slice (Line 1: "WE MAKE" + Brand Tag) -> Shifts Left
-  const topSliceX = useTransform(smoothProgress, [0.05, 0.55], [0, -200]);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-  // Middle Slice (Line 2: "STORIES LOOK") -> Shifts Right
-  const middleSliceX = useTransform(smoothProgress, [0.05, 0.55], [0, 200]);
+  const topSliceX = useTransform(smoothProgress, [0.05, 0.55], [0, isMobile ? -80 : -200]);
+  const middleSliceX = useTransform(smoothProgress, [0.05, 0.55], [0, isMobile ? 80 : 200]);
+  const bottomSliceX = useTransform(smoothProgress, [0.05, 0.55], [0, isMobile ? -50 : -120]);
 
-  // Bottom Slice (Line 3: "EXPENSIVE." + Paragraph & CTAs) -> Shifts Left
-  const bottomSliceX = useTransform(smoothProgress, [0.05, 0.55], [0, -120]);
 
   // Fast, crisp Slices Fade to Opacity 0 as next section scrolls up
   const slicesOpacity = useTransform(smoothProgress, [0.2, 0.55], [1, 0]);
@@ -46,7 +45,7 @@ export default function HeroSection() {
   return (
     <section ref={containerRef} className="relative h-[150vh] bg-[#050505]">
       {/* Sticky Viewport Container (Pinned in place during initial scroll) */}
-      <div className="sticky top-0 h-screen w-full flex flex-col justify-center pt-24 sm:pt-28 pb-12 sm:pb-16 px-6 sm:px-8 lg:px-12 bg-[#050505] select-none overflow-hidden">
+      <div className="sticky top-0 h-svh w-full flex flex-col justify-center pt-24 sm:pt-28 pb-12 sm:pb-16 px-6 sm:px-8 lg:px-12 bg-[#050505] select-none overflow-hidden">
         
         {/* Visual Cinematic Background Poster */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">

@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 
 /**
  * SCROLL  = enter / exit only
@@ -36,6 +37,7 @@ export default function ShowreelReveal({
 
   const [muted, setMuted] = useState(true);
   const [phase, setPhase] = useState<Status>("idle");
+  const [videoReady, setVideoReady] = useState(false);
 
   useLayoutEffect(() => {
     const previousTop = pendingStageTopRef.current;
@@ -75,7 +77,6 @@ export default function ShowreelReveal({
     let queued = false;
     let navbarHidden = false;
     let sectionStart = 0;
-    let shrinkRunway = 0;
     let W = 0;
     let H = 0;
     let frameTop = 0;
@@ -139,14 +140,18 @@ export default function ShowreelReveal({
     /** Return the video to normal document flow without moving it on screen. */
     const showNormal = () => {
       cancelAnimationFrame(raf);
+      // Capture position BEFORE layout change so useLayoutEffect can correct scroll
       pendingStageTopRef.current = stage.getBoundingClientRect().top;
       status = "normal";
-      setPhase("normal");
       ball.style.opacity = "0";
       reveal.style.clipPath = "none";
       reveal.style.transform = "scale(1)";
       setNavbarHidden(false);
       play();
+      // Defer React phase change by one frame so DOM styles settle first (reduces flash)
+      requestAnimationFrame(() => {
+        setPhase("normal");
+      });
     };
 
     const showFinal = () => {
@@ -155,7 +160,6 @@ export default function ShowreelReveal({
       reveal.style.clipPath = "none";
       play();
 
-      shrinkRunway = Math.max(1, section.offsetHeight - stage.offsetHeight);
       status = "expanded";
       setPhase("expanded");
       setNavbarHidden(true);
@@ -165,7 +169,6 @@ export default function ShowreelReveal({
       cancelAnimationFrame(raf);
       status = "idle";
       hasPlayedOnce = false;
-      shrinkRunway = 0;
       ball.style.opacity = "1";
       ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
       reveal.style.clipPath = `circle(0px at ${W / 2}px ${H / 2}px)`;
@@ -237,22 +240,11 @@ export default function ShowreelReveal({
         showNormal();
       }
 
-      // Shrink progress while still expanded and scrolling down
+      // Hold the revealed video in place, then return it to normal flow at the
+      // end of the runway so the next archive cards scroll up naturally.
       if (status === "expanded") {
-        const runway = shrinkRunway || Math.max(1, section.offsetHeight - stage.offsetHeight);
-        const shrinkStart = sectionStart + runway * 0.2;
-        const shrinkRange = Math.max(1, runway * 0.65);
-        const progress = Math.max(
-          0,
-          Math.min(1, (currentY - shrinkStart) / shrinkRange)
-        );
-        const shrinkAmount = window.matchMedia("(max-width: 768px)").matches ? 0.08 : 0.28;
-        reveal.style.transform = `scale(${1 - progress * shrinkAmount})`;
-        setNavbarHidden(progress < 0.06);
-
-        // Fully shrunk → lock into normal
-        if (progress >= 0.98) {
-          void reveal.offsetWidth;
+        const releaseAt = sectionStart + Math.max(1, section.offsetHeight - window.innerHeight);
+        if (currentY >= releaseAt - 12) {
           showNormal();
         }
       }
@@ -284,9 +276,6 @@ export default function ShowreelReveal({
     const onResize = () => {
       measure();
       measureBounds();
-      if (status === "expanded") {
-        shrinkRunway = Math.max(1, section.offsetHeight - stage.offsetHeight);
-      }
       if (status === "expanded" || status === "normal") check();
     };
 
@@ -339,34 +328,39 @@ export default function ShowreelReveal({
     <section
       ref={sectionRef}
       aria-label="Showreel"
-      className={`showreel-section relative bg-black ${isCinematic ? "min-h-[200svh] md:min-h-[220svh]" : ""}`}
+      className={`showreel-section relative bg-black ${isCinematic ? "min-h-[180svh]" : ""}`}
       data-cinematic={isCinematic}
     >
         <div
           ref={stageRef}
-          className={`${
-              isCinematic ? "sticky top-0" : "relative"
-          } showreel-stage relative flex h-svh w-full items-center justify-center overflow-hidden bg-black`}
+          className={`${isCinematic ? "sticky top-0 h-svh" : "relative h-auto py-8 sm:py-12"} showreel-stage flex w-full items-center justify-center overflow-hidden bg-black`}
       >
         {/* Main showreel video */}
         <div
           ref={revealRef}
-          className={`showreel-video-frame relative aspect-video overflow-hidden md:mx-auto ${
-            phase === "normal"
-              ? "w-[92%] md:aspect-video md:w-[72vw] md:max-w-300"
-              : "w-full md:absolute md:inset-0 md:h-full md:aspect-auto md:max-w-none"
-          }`}
-          data-settling={phase === "normal" ? "true" : undefined}
+          className="showreel-video-frame relative mx-auto aspect-video overflow-hidden rounded-xl sm:rounded-2xl"
           style={{
             clipPath: "circle(0px at 50% 50%)",
             willChange: "clip-path, transform",
           }}
         >
+          {posterSrc && (
+            // Keep the poster underneath the first decoded video frame to avoid
+            // a black/white flash while mobile browsers initialize playback.
+            <img
+              src={posterSrc}
+              alt=""
+              aria-hidden="true"
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${videoReady ? "opacity-0" : "opacity-100"}`}
+            />
+          )}
           <video
             ref={videoRef}
-            className="h-full w-full object-cover"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${videoReady || !posterSrc ? "opacity-100" : "opacity-0"}`}
             src={videoSrc}
             poster={posterSrc}
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoReady(false)}
             muted
             loop
             playsInline
@@ -408,9 +402,11 @@ export default function ShowreelReveal({
           type="button"
           onClick={() => setMuted((m) => !m)}
           aria-pressed={!muted}
-          className="absolute bottom-6 right-6 rounded-full bg-black/60 px-4 py-2 text-sm text-white backdrop-blur focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          aria-label={muted ? "Turn sound on" : "Turn sound off"}
+          className="absolute bottom-3 right-3 flex size-11 items-center justify-center rounded-full bg-black/65 text-white shadow-lg backdrop-blur focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-5 sm:right-5 sm:size-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
         >
-          {muted ? "Sound off" : "Sound on"}
+          {muted ? <VolumeX className="size-5" aria-hidden="true" /> : <Volume2 className="size-5" aria-hidden="true" />}
+          <span className="hidden sm:inline">{muted ? "Sound off" : "Sound on"}</span>
         </button>
       </div>
     </section>
