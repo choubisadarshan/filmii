@@ -118,3 +118,22 @@ html {
   animation: recPulse 1.4s infinite ease-in-out;
 }
 
+.showreel-video-frame[data-settling="true"] {
+  transition:
+    width 450ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 450ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 768px) {
+  .showreel-section .showreel-stage {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .showreel-section[data-cinematic="true"] .showreel-video-frame {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}

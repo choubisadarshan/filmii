@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * SCROLL  = enter / exit only
@@ -32,9 +32,23 @@ export default function ShowreelReveal({
   const ballRef = useRef<HTMLDivElement | null>(null);
   const revealRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const pendingStageTopRef = useRef<number | null>(null);
 
   const [muted, setMuted] = useState(true);
   const [phase, setPhase] = useState<Status>("idle");
+
+  useLayoutEffect(() => {
+    const previousTop = pendingStageTopRef.current;
+    const stage = stageRef.current;
+    if (previousTop === null || !stage) return;
+
+    pendingStageTopRef.current = null;
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, window.scrollY + stage.getBoundingClientRect().top - previousTop);
+    root.style.scrollBehavior = previousScrollBehavior;
+  }, [phase]);
 
   // user-controlled sound only
   useEffect(() => {
@@ -61,7 +75,7 @@ export default function ShowreelReveal({
     let queued = false;
     let navbarHidden = false;
     let sectionStart = 0;
-    let sectionEnd = 0;
+    let shrinkRunway = 0;
     let W = 0;
     let H = 0;
     let frameTop = 0;
@@ -81,7 +95,6 @@ export default function ShowreelReveal({
     const measureBounds = () => {
       const rect = section.getBoundingClientRect();
       sectionStart = rect.top + window.scrollY;
-      sectionEnd = rect.bottom + window.scrollY;
     };
 
     const play = () => video.play().catch(() => {});
@@ -123,9 +136,10 @@ export default function ShowreelReveal({
       reveal.style.clipPath = `circle(${r}px at ${W / 2}px ${H / 2}px)`;
     };
 
-    /** Jump straight to the final “normal size” state (no animation) */
+    /** Return the video to normal document flow without moving it on screen. */
     const showNormal = () => {
       cancelAnimationFrame(raf);
+      pendingStageTopRef.current = stage.getBoundingClientRect().top;
       status = "normal";
       setPhase("normal");
       ball.style.opacity = "0";
@@ -141,11 +155,7 @@ export default function ShowreelReveal({
       reveal.style.clipPath = "none";
       play();
 
-      // If user was scrolling up while animation finished → go normal immediately
-      if (direction < 0) {
-        showNormal();
-        return;
-      }
+      shrinkRunway = Math.max(1, section.offsetHeight - stage.offsetHeight);
       status = "expanded";
       setPhase("expanded");
       setNavbarHidden(true);
@@ -155,6 +165,7 @@ export default function ShowreelReveal({
       cancelAnimationFrame(raf);
       status = "idle";
       hasPlayedOnce = false;
+      shrinkRunway = 0;
       ball.style.opacity = "1";
       ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
       reveal.style.clipPath = `circle(0px at ${W / 2}px ${H / 2}px)`;
@@ -198,7 +209,6 @@ export default function ShowreelReveal({
       const rect = section.getBoundingClientRect();
       const vh = window.innerHeight;
       sectionStart = rect.top + window.scrollY;
-      sectionEnd = rect.bottom + window.scrollY;
       const currentY = window.scrollY;
 
       // Reset only after leaving above, so the next downward entry can replay.
@@ -216,7 +226,7 @@ export default function ShowreelReveal({
         status === "idle" &&
         !hasPlayedOnce &&
         direction >= 0 &&
-        rect.top < vh * 0.75 &&
+        rect.top < vh * (window.matchMedia("(max-width: 768px)").matches ? 0.9 : 0.75) &&
         rect.bottom > vh * 0.2
       ) {
         start();
@@ -227,30 +237,22 @@ export default function ShowreelReveal({
         showNormal();
       }
 
-      // While expanded + scrolling up → shrink to normal
-      if (
-        status === "expanded" &&
-        direction < 0 &&
-        currentY > sectionStart &&
-        currentY < sectionEnd
-      ) {
-        showNormal();
-      }
-
       // Shrink progress while still expanded and scrolling down
       if (status === "expanded") {
-        const runway = Math.max(1, sectionEnd - sectionStart - vh);
-        const shrinkStart = sectionStart + runway * 0.45;
-        const shrinkRange = Math.max(1, runway * 0.55);
+        const runway = shrinkRunway || Math.max(1, section.offsetHeight - stage.offsetHeight);
+        const shrinkStart = sectionStart + runway * 0.2;
+        const shrinkRange = Math.max(1, runway * 0.65);
         const progress = Math.max(
           0,
           Math.min(1, (currentY - shrinkStart) / shrinkRange)
         );
-        reveal.style.transform = `scale(${1 - progress * 0.28})`;
+        const shrinkAmount = window.matchMedia("(max-width: 768px)").matches ? 0.08 : 0.28;
+        reveal.style.transform = `scale(${1 - progress * shrinkAmount})`;
         setNavbarHidden(progress < 0.06);
 
         // Fully shrunk → lock into normal
         if (progress >= 0.98) {
+          void reveal.offsetWidth;
           showNormal();
         }
       }
@@ -282,10 +284,14 @@ export default function ShowreelReveal({
     const onResize = () => {
       measure();
       measureBounds();
+      if (status === "expanded") {
+        shrinkRunway = Math.max(1, section.offsetHeight - stage.offsetHeight);
+      }
       if (status === "expanded" || status === "normal") check();
     };
 
     // Reliable first-entry detection
+    const entryThreshold = window.matchMedia("(max-width: 768px)").matches ? 0.9 : 0.75;
     const io = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
@@ -295,12 +301,12 @@ export default function ShowreelReveal({
           status === "idle" &&
           !hasPlayedOnce &&
           direction >= 0 &&
-          entry.boundingClientRect.top < window.innerHeight
+          entry.boundingClientRect.top < window.innerHeight * entryThreshold
         ) {
           start();
         }
       },
-      { rootMargin: "0px 0px -20% 0px", threshold: 0.08 }
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.01 }
     );
     io.observe(section);
 
@@ -333,23 +339,24 @@ export default function ShowreelReveal({
     <section
       ref={sectionRef}
       aria-label="Showreel"
-      className="relative bg-black"
-      style={isCinematic ? { height: "155svh" } : undefined}
+      className={`showreel-section relative bg-black ${isCinematic ? "min-h-[200svh] md:min-h-[220svh]" : ""}`}
+      data-cinematic={isCinematic}
     >
         <div
           ref={stageRef}
           className={`${
               isCinematic ? "sticky top-0" : "relative"
-          } relative flex h-svh w-full items-center justify-center overflow-hidden bg-black`}
+          } showreel-stage relative flex h-svh w-full items-center justify-center overflow-hidden bg-black`}
       >
         {/* Main showreel video */}
         <div
           ref={revealRef}
-          className={`relative aspect-video overflow-hidden md:mx-auto ${
+          className={`showreel-video-frame relative aspect-video overflow-hidden md:mx-auto ${
             phase === "normal"
               ? "w-[92%] md:aspect-video md:w-[72vw] md:max-w-300"
               : "w-full md:absolute md:inset-0 md:h-full md:aspect-auto md:max-w-none"
           }`}
+          data-settling={phase === "normal" ? "true" : undefined}
           style={{
             clipPath: "circle(0px at 50% 50%)",
             willChange: "clip-path, transform",

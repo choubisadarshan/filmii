@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Film } from "lucide-react";
 import VisualArchiveReveal from "@/components/ui/visual-archive-reveal";
 
 interface PortfolioSectionProps {
@@ -12,16 +13,11 @@ const CLIENT_VIDEOS = [
     id: "client-1",
     title: "Client Project 01",
     subtitle: "Music Video · 2025",
-    // Replace these paths with your real client videos
-    src: "/client-video-1.mp4",
-    poster: "/client-poster-1.jpg",
   },
   {
     id: "client-2",
     title: "Client Project 02",
     subtitle: "EP Visualizer · 2025",
-    src: "/client-video-2.mp4",
-    poster: "/client-poster-2.jpg",
   },
 ];
 
@@ -37,7 +33,7 @@ export default function PortfolioSection({ onFullscreenChange }: PortfolioSectio
         onFullscreenChange={onFullscreenChange}
       />
 
-      {/* Extra client videos – pure normal scroll, zero animation */}
+      {/* Client previews stay in normal flow until their media assets are available. */}
       <ClientVideosGrid />
     </section>
   );
@@ -45,7 +41,7 @@ export default function PortfolioSection({ onFullscreenChange }: PortfolioSectio
 
 function SectionBanner() {
   return (
-    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-24 pb-12">
+    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-10 pb-5 sm:pt-16 md:pt-24 md:pb-12">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -57,7 +53,7 @@ function SectionBanner() {
           <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
             03 / SELECTED WORK
           </span>
-          <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white">
+          <h2 className="font-display text-4xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white">
             VISUAL <span className="text-neutral-500">ARCHIVE</span>
           </h2>
         </div>
@@ -71,11 +67,13 @@ function SectionBanner() {
 
 function ClientVideosGrid() {
   return (
-    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pb-24 pt-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-        {CLIENT_VIDEOS.map((item) => (
-          <ClientVideoCard key={item.id} {...item} />
-        ))}
+    <div className="client-video-panel">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pb-24 pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          {CLIENT_VIDEOS.map((item) => (
+            <ClientVideoCard key={item.id} {...item} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -84,28 +82,21 @@ function ClientVideosGrid() {
 function ClientVideoCard({
   title,
   subtitle,
-  src,
-  poster,
 }: {
   title: string;
   subtitle: string;
-  src: string;
-  poster: string;
 }) {
   return (
     <div className="group">
-      <div className="relative w-full aspect-video overflow-hidden rounded-xl bg-[#0A0A0A] border border-white/10">
-        <video
-          className="h-full w-full object-cover"
-          src={src}
-          poster={poster}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          controls
-          // plain native controls – no custom animation
-        />
+      <div
+        role="img"
+        aria-label={`${title} preview coming soon`}
+        className="relative flex aspect-video w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] text-neutral-500"
+      >
+        <Film className="size-8 text-[#E50914]/80" aria-hidden="true" />
+        <span className="font-mono text-xs uppercase tracking-[0.18em]">
+          Preview coming soon
+        </span>
       </div>
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
