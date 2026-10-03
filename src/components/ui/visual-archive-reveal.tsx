@@ -3,15 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * SCROLL  = enter / exit only (decides whether the section is active)
- * TIME    = the cinematic sequence (performance.now + requestAnimationFrame)
- *
- * Timeline (ms, independent of scroll speed):
- *   0    – 800   ball drops (gravity ease-in)
- *   800  – 1300  bounce 1
- *   1300 – 1600  bounce 2
- *   1600 – 2400  ball fades/grows while circular clip-path reveals the video
- *   2400         reveal completes, then holds until the user scrolls away
+ * SCROLL  = enter / exit only
+ * TIME    = cinematic ball + circle reveal (replays on each downward entry)
  */
 const T_DROP = 800;
 const T_B1 = 1300;
@@ -39,10 +32,11 @@ export default function ShowreelReveal({
   const ballRef = useRef<HTMLDivElement | null>(null);
   const revealRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
   const [muted, setMuted] = useState(true);
   const [phase, setPhase] = useState<Status>("idle");
 
-  // sound is user-controlled only
+  // user-controlled sound only
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -64,8 +58,6 @@ export default function ShowreelReveal({
     let t0 = 0;
     let previousY = window.scrollY;
     let direction = 0;
-    let enteredFromAbove = false;
-    let enteredFromBelow = false;
     let queued = false;
     let navbarHidden = false;
     let sectionStart = 0;
@@ -75,11 +67,13 @@ export default function ShowreelReveal({
     let frameTop = 0;
     let S = 0;
 
+    let hasPlayedOnce = false;
+
     const measure = () => {
       const stageRect = stage.getBoundingClientRect();
       const frameRect = reveal.getBoundingClientRect();
-      W = reveal.clientWidth;
-      H = reveal.clientHeight;
+      W = reveal.clientWidth || stage.clientWidth;
+      H = reveal.clientHeight || stage.clientHeight;
       frameTop = frameRect.top - stageRect.top;
       S = ball.offsetWidth;
     };
@@ -118,7 +112,7 @@ export default function ShowreelReveal({
       } else {
         const u = Math.min(1, (t - T_B2) / (T_TOTAL - T_B2));
         const fade = Math.min(1, u / 0.35);
-        const R = Math.hypot(W / 2, H / 2);
+        const R = Math.hypot(W / 2, H / 2) * 1.15;
         r = S / 2 + (R - S / 2) * easeInOutCubic(u);
         opacity = 1 - fade;
         scale = 1 + 0.35 * fade;
@@ -129,13 +123,16 @@ export default function ShowreelReveal({
       reveal.style.clipPath = `circle(${r}px at ${W / 2}px ${H / 2}px)`;
     };
 
+    /** Jump straight to the final “normal size” state (no animation) */
     const showNormal = () => {
+      cancelAnimationFrame(raf);
       status = "normal";
       setPhase("normal");
       ball.style.opacity = "0";
       reveal.style.clipPath = "none";
       reveal.style.transform = "scale(1)";
       setNavbarHidden(false);
+      play();
     };
 
     const showFinal = () => {
@@ -143,6 +140,8 @@ export default function ShowreelReveal({
       ball.style.opacity = "0";
       reveal.style.clipPath = "none";
       play();
+
+      // If user was scrolling up while animation finished → go normal immediately
       if (direction < 0) {
         showNormal();
         return;
@@ -152,8 +151,20 @@ export default function ShowreelReveal({
       setNavbarHidden(true);
     };
 
+    const resetForReplay = () => {
+      cancelAnimationFrame(raf);
+      status = "idle";
+      hasPlayedOnce = false;
+      ball.style.opacity = "1";
+      ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
+      reveal.style.clipPath = `circle(0px at ${W / 2}px ${H / 2}px)`;
+      reveal.style.transform = "scale(1)";
+      setPhase("idle");
+      setNavbarHidden(false);
+    };
+
     const tick = () => {
-      const t = performance.now() - t0; // elapsed time, not scroll
+      const t = performance.now() - t0;
       if (t >= T_TOTAL) {
         draw(T_TOTAL);
         showFinal();
@@ -164,8 +175,14 @@ export default function ShowreelReveal({
     };
 
     const start = () => {
+      if (hasPlayedOnce || status === "running" || status === "expanded") return;
       measure();
-      if (reduce.matches) return showNormal();
+      if (reduce.matches) {
+        hasPlayedOnce = true;
+        showNormal();
+        return;
+      }
+      hasPlayedOnce = true;
       status = "running";
       setPhase("running");
       setNavbarHidden(true);
@@ -174,35 +191,43 @@ export default function ShowreelReveal({
       raf = requestAnimationFrame(tick);
     };
 
-    const reset = () => {
-      cancelAnimationFrame(raf);
-      status = "idle";
-      setPhase("idle");
-      measure();
-      video.pause();
-      video.currentTime = 0;
-      ball.style.opacity = "1";
-      ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
-      reveal.style.clipPath = `circle(0px at ${W / 2}px ${H / 2}px)`;
-      reveal.style.transform = "scale(1)";
-      setNavbarHidden(false);
-    };
-
     const check = () => {
       scrollRaf = 0;
       queued = false;
+
       const rect = section.getBoundingClientRect();
       const vh = window.innerHeight;
       sectionStart = rect.top + window.scrollY;
       sectionEnd = rect.bottom + window.scrollY;
       const currentY = window.scrollY;
 
-      if (status === "idle" && enteredFromAbove) start();
-      else if (status === "idle" && enteredFromBelow) showNormal();
+      // Reset only after leaving above, so the next downward entry can replay.
+      if (
+        hasPlayedOnce &&
+        direction < 0 &&
+        rect.top >= vh &&
+        status !== "idle"
+      ) {
+        resetForReplay();
+      }
 
-      enteredFromAbove = false;
-      enteredFromBelow = false;
+      // ── Enter from ABOVE → play cinematic ─────────────────────────────────
+      if (
+        status === "idle" &&
+        !hasPlayedOnce &&
+        direction >= 0 &&
+        rect.top < vh * 0.75 &&
+        rect.bottom > vh * 0.2
+      ) {
+        start();
+      }
 
+      // ── Enter from BELOW → always show normal size, never ball ────────────
+      if (status === "idle" && hasPlayedOnce) {
+        showNormal();
+      }
+
+      // While expanded + scrolling up → shrink to normal
       if (
         status === "expanded" &&
         direction < 0 &&
@@ -212,41 +237,43 @@ export default function ShowreelReveal({
         showNormal();
       }
 
-      if (status !== "running" && status !== "idle") {
-        if (direction < 0 && currentY < sectionStart - vh * 0.7) reset();
-        else if (direction > 0 && currentY > sectionEnd + vh * 0.25) reset();
-      }
-
+      // Shrink progress while still expanded and scrolling down
       if (status === "expanded") {
         const runway = Math.max(1, sectionEnd - sectionStart - vh);
-        const shrinkStart = sectionStart + runway * 0.58;
-        const shrinkRange = Math.max(1, runway * 0.42);
-        const progress = Math.max(0, Math.min(1, (currentY - shrinkStart) / shrinkRange));
-        reveal.style.transform = `scale(${1 - progress * 0.3})`;
-        setNavbarHidden(progress < 0.04);
+        const shrinkStart = sectionStart + runway * 0.45;
+        const shrinkRange = Math.max(1, runway * 0.55);
+        const progress = Math.max(
+          0,
+          Math.min(1, (currentY - shrinkStart) / shrinkRange)
+        );
+        reveal.style.transform = `scale(${1 - progress * 0.28})`;
+        setNavbarHidden(progress < 0.06);
+
+        // Fully shrunk → lock into normal
+        if (progress >= 0.98) {
+          showNormal();
+        }
       }
 
+      // Pause / resume video when section leaves viewport
       const out = rect.bottom <= 0 || rect.top >= vh;
       if (out && !video.paused) video.pause();
-      else if (!out && video.paused && status !== "idle" && status !== "running") {
+      else if (
+        !out &&
+        video.paused &&
+        status !== "idle" &&
+        status !== "running"
+      ) {
         play();
       }
     };
 
     const onScroll = () => {
       const currentY = window.scrollY;
-      if (currentY > previousY) {
-        direction = 1;
-        if (previousY < sectionStart && currentY >= sectionStart && currentY < sectionEnd) {
-          enteredFromAbove = true;
-        }
-      } else if (currentY < previousY) {
-        direction = -1;
-        if (previousY > sectionEnd && currentY <= sectionEnd && currentY > sectionStart) {
-          enteredFromBelow = true;
-        }
-      }
+      if (currentY > previousY) direction = 1;
+      else if (currentY < previousY) direction = -1;
       previousY = currentY;
+
       if (queued) return;
       queued = true;
       scrollRaf = requestAnimationFrame(check);
@@ -258,32 +285,64 @@ export default function ShowreelReveal({
       if (status === "expanded" || status === "normal") check();
     };
 
+    // Reliable first-entry detection
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (
+          entry.isIntersecting &&
+          status === "idle" &&
+          !hasPlayedOnce &&
+          direction >= 0 &&
+          entry.boundingClientRect.top < window.innerHeight
+        ) {
+          start();
+        }
+      },
+      { rootMargin: "0px 0px -20% 0px", threshold: 0.08 }
+    );
+    io.observe(section);
+
     measure();
     measureBounds();
-    reset();
+
+    // Initial state: ball ready, clip closed
+    ball.style.opacity = "1";
+    ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
+    reveal.style.clipPath = `circle(0px at 50% 50%)`;
+    reveal.style.transform = "scale(1)";
+
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
+
     return () => {
       cancelAnimationFrame(raf);
       cancelAnimationFrame(scrollRaf);
+      io.disconnect();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       setNavbarHidden(false);
     };
   }, [onFullscreenChange]);
 
+  // When phase is "normal" the section is pure document flow (no sticky, no extra height)
+  const isCinematic = phase === "idle" || phase === "running" || phase === "expanded";
+
   return (
     <section
       ref={sectionRef}
       aria-label="Showreel"
       className="relative bg-black"
-      style={{ height: "125svh" }}
+      style={isCinematic ? { height: "155svh" } : undefined}
     >
-      <div
-        ref={stageRef}
-        className={`${phase === "normal" ? "relative" : "sticky"} top-0 flex h-svh w-full items-center justify-center overflow-hidden bg-black md:block`}
+        <div
+          ref={stageRef}
+          className={`${
+              isCinematic ? "sticky top-0" : "relative"
+          } relative flex h-svh w-full items-center justify-center overflow-hidden bg-black`}
       >
-        {/* video, revealed by circular clip-path */}
+        {/* Main showreel video */}
         <div
           ref={revealRef}
           className={`relative aspect-video overflow-hidden md:mx-auto ${
@@ -291,7 +350,10 @@ export default function ShowreelReveal({
               ? "w-[92%] md:aspect-video md:w-[72vw] md:max-w-300"
               : "w-full md:absolute md:inset-0 md:h-full md:aspect-auto md:max-w-none"
           }`}
-          style={{ clipPath: "circle(0px at 50% 50%)", willChange: "clip-path, transform" }}
+          style={{
+            clipPath: "circle(0px at 50% 50%)",
+            willChange: "clip-path, transform",
+          }}
         >
           <video
             ref={videoRef}
@@ -309,7 +371,7 @@ export default function ShowreelReveal({
           />
         </div>
 
-        {/* red ball */}
+        {/* Red ball (only visible during cinematic phase) */}
         <div
           ref={ballRef}
           className="pointer-events-none absolute top-0 rounded-full"
@@ -317,10 +379,12 @@ export default function ShowreelReveal({
             left: "50%",
             width: "clamp(56px, 9vmin, 96px)",
             height: "clamp(56px, 9vmin, 96px)",
-            background: "radial-gradient(circle at 32% 28%, #ff8a7a 0%, #e11d2e 38%, #7a0a14 100%)",
+            background:
+              "radial-gradient(circle at 32% 28%, #ff8a7a 0%, #e11d2e 38%, #7a0a14 100%)",
             boxShadow: "0 20px 60px rgba(225,29,46,0.35)",
             transform: "translate3d(-50%, -200px, 0)",
             willChange: "transform, opacity",
+            opacity: isCinematic ? 1 : 0,
           }}
         >
           <span
