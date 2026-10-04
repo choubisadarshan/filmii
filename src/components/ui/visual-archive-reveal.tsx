@@ -8,13 +8,14 @@ type Phase = "idle" | "drop" | "reveal";
 interface VisualArchiveRevealProps {
   videoSrc?: string;
   posterSrc?: string;
+  onFullscreenChange?: (hidden: boolean) => void;
 }
 
 export default function VisualArchiveReveal({
   videoSrc = "/showcase_video.mp4",
   posterSrc = "/showcase_poster.jpg",
 }: VisualArchiveRevealProps) {
-  const sectionRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasAnimatedRef = useRef(false);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -22,8 +23,8 @@ export default function VisualArchiveReveal({
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
+    const stage = stageRef.current;
+    if (!stage) return;
 
     let revealTimer = 0;
 
@@ -31,12 +32,8 @@ export default function VisualArchiveReveal({
       ([entry]) => {
         if (!entry) return;
 
-        // Enter section → start animation once
-        if (
-          entry.isIntersecting &&
-          entry.intersectionRatio >= 0.32 &&
-          !hasAnimatedRef.current
-        ) {
+        // Enter stage → start animation once
+        if (entry.isIntersecting && !hasAnimatedRef.current) {
           hasAnimatedRef.current = true;
 
           if (reduceMotion) {
@@ -50,29 +47,12 @@ export default function VisualArchiveReveal({
             setPhase("reveal");
             void videoRef.current?.play();
           }, 1050);
-          return;
-        }
-
-        // Leave upward → reset so it can play again next time
-        if (
-          hasAnimatedRef.current &&
-          entry.intersectionRatio < 0.15 &&
-          entry.boundingClientRect.top > 0
-        ) {
-          window.clearTimeout(revealTimer);
-          hasAnimatedRef.current = false;
-          setPhase("idle");
-          const v = videoRef.current;
-          if (v) {
-            v.pause();
-            v.currentTime = 0;
-          }
         }
       },
-      { threshold: [0.15, 0.32] }
+      { threshold: 0.05 }
     );
 
-    observer.observe(section);
+    observer.observe(stage);
     return () => {
       observer.disconnect();
       window.clearTimeout(revealTimer);
@@ -89,10 +69,9 @@ export default function VisualArchiveReveal({
 
   return (
     <section
-      ref={sectionRef}
       id="archive"
       aria-labelledby="archive-title"
-      className="relative overflow-hidden bg-[#050505] pt-16 md:pt-24"
+      className="relative overflow-x-clip bg-[#050505] pt-16 md:pt-24"
     >
       {/* Heading */}
       <div className="mx-auto flex w-[min(1280px,calc(100%-36px))] flex-col items-start justify-between gap-6 border-b border-white/10 pb-8 md:w-[min(1280px,calc(100%-64px))] md:flex-row md:items-end md:gap-16">
@@ -114,26 +93,29 @@ export default function VisualArchiveReveal({
       </div>
 
       {/* Stage */}
-      <div className="relative mx-auto mt-16 grid w-full place-items-center perspective-[1100px] md:mt-28 md:w-[min(1200px,calc(100%-64px))] md:aspect-video">
+      <div
+        ref={stageRef}
+        className="relative mx-auto mt-16 grid w-full place-items-center perspective-[1100px] md:mt-28 md:w-[min(1200px,calc(100%-64px))] md:aspect-video"
+      >
         {/* Ball */}
         <AnimatePresence>
           {phase !== "reveal" && (
-            <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
+            <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center">
               <motion.div
                 key="ball"
-                initial={{ opacity: 0, y: "-70vh", rotateX: -35, rotateZ: -120, scale: 0.72 }}
+                initial={{ opacity: 0, y: "-110vh", rotateX: -35, rotateZ: -120, scale: 0.72 }}
                 animate={
                   phase === "drop"
                     ? {
-                        opacity: 1,
-                        y: [null, 18, -42, 0],
-                        rotateX: [null, 18, 4, 0],
-                        rotateZ: [null, 20, -8, 0],
-                        scale: [null, 1.06, 0.97, 1],
-                        scaleX: [null, 1.06, 0.97, 1],
-                        scaleY: [null, 0.94, 0.97, 1],
+                        opacity: [0, 1, 1, 1],
+                        y: ["-110vh", "0vh", "-7vh", "0vh"],
+                        rotateX: [-35, 18, 4, 0],
+                        rotateZ: [-120, 20, -8, 0],
+                        scale: [0.72, 1.06, 0.97, 1],
+                        scaleX: [1, 1.06, 0.97, 1],
+                        scaleY: [0.72, 0.94, 0.97, 1],
                       }
-                    : { opacity: 0, y: "-70vh", scale: 0.72 }
+                    : { opacity: 0, y: "-110vh", scale: 0.72 }
                 }
                 exit={{
                   opacity: 0,
@@ -142,7 +124,7 @@ export default function VisualArchiveReveal({
                 }}
                 transition={
                   phase === "drop"
-                    ? { duration: 1.05, ease: [0.2, 0.72, 0.24, 1], times: [0, 0.68, 0.82, 1] }
+                    ? { duration: 1.05, ease: [0.2, 0.72, 0.24, 1], times: [0, 0.68, 0.84, 1] }
                     : { duration: 0.3 }
                 }
                 className="relative aspect-square w-[clamp(130px,13vw,210px)] overflow-hidden rounded-full border border-white/30"
