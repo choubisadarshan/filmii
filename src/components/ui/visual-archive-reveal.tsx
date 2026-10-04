@@ -17,7 +17,7 @@ export default function VisualArchiveReveal({
 }: VisualArchiveRevealProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hasAnimatedRef = useRef(false);
+  const wasIntersectingRef = useRef(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [muted, setMuted] = useState(true);
   const reduceMotion = useReducedMotion();
@@ -26,15 +26,18 @@ export default function VisualArchiveReveal({
     const stage = stageRef.current;
     if (!stage) return;
 
-    let revealTimer = 0;
+    let revealTimer: number | undefined;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
 
-        // Enter stage → start animation once
-        if (entry.isIntersecting && !hasAnimatedRef.current) {
-          hasAnimatedRef.current = true;
+        if (entry.isIntersecting) {
+          if (wasIntersectingRef.current) return;
+          wasIntersectingRef.current = true;
+
+          // Only replay when entering from above, not when scrolling back up.
+          if (entry.boundingClientRect.top < 0) return;
 
           if (reduceMotion) {
             setPhase("reveal");
@@ -44,9 +47,18 @@ export default function VisualArchiveReveal({
 
           setPhase("drop");
           revealTimer = window.setTimeout(() => {
+            revealTimer = undefined;
             setPhase("reveal");
             void videoRef.current?.play();
           }, 1050);
+        } else {
+          wasIntersectingRef.current = false;
+
+          if (revealTimer !== undefined) {
+            window.clearTimeout(revealTimer);
+            revealTimer = undefined;
+            setPhase("idle");
+          }
         }
       },
       { threshold: 0.05 }
@@ -55,7 +67,7 @@ export default function VisualArchiveReveal({
     observer.observe(stage);
     return () => {
       observer.disconnect();
-      window.clearTimeout(revealTimer);
+      if (revealTimer !== undefined) window.clearTimeout(revealTimer);
     };
   }, [reduceMotion]);
 
