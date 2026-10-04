@@ -1,414 +1,228 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
-/**
- * SCROLL  = enter / exit only
- * TIME    = cinematic ball + circle reveal (replays on each downward entry)
- */
-const T_DROP = 800;
-const T_B1 = 1300;
-const T_B2 = 1600;
-const T_TOTAL = 2400;
+type Phase = "idle" | "drop" | "reveal";
 
-const easeInOutCubic = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-type Status = "idle" | "running" | "expanded" | "normal";
-
-interface ShowreelRevealProps {
-  videoSrc: string;
+interface VisualArchiveRevealProps {
+  videoSrc?: string;
   posterSrc?: string;
-  onFullscreenChange?: (hidden: boolean) => void;
 }
 
-export default function ShowreelReveal({
-  videoSrc,
-  posterSrc,
-  onFullscreenChange,
-}: ShowreelRevealProps) {
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const ballRef = useRef<HTMLDivElement | null>(null);
-  const revealRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const pendingStageTopRef = useRef<number | null>(null);
-
+export default function VisualArchiveReveal({
+  videoSrc = "/showcase_video.mp4",
+  posterSrc = "/showcase_poster.jpg",
+}: VisualArchiveRevealProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hasAnimatedRef = useRef(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [muted, setMuted] = useState(true);
-  const [phase, setPhase] = useState<Status>("idle");
-  const [videoReady, setVideoReady] = useState(false);
-
-  useLayoutEffect(() => {
-    const previousTop = pendingStageTopRef.current;
-    const stage = stageRef.current;
-    if (previousTop === null || !stage) return;
-
-    pendingStageTopRef.current = null;
-    const root = document.documentElement;
-    const previousScrollBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = "auto";
-    window.scrollTo(0, window.scrollY + stage.getBoundingClientRect().top - previousTop);
-    root.style.scrollBehavior = previousScrollBehavior;
-  }, [phase]);
-
-  // user-controlled sound only
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = muted;
-    if (!muted) v.play().catch(() => {});
-  }, [muted]);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    const section = sectionRef.current!;
-    const stage = stageRef.current!;
-    const ball = ballRef.current!;
-    const reveal = revealRef.current!;
-    const video = videoRef.current!;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const section = sectionRef.current;
+    if (!section) return;
 
-    let status: Status = "idle";
-    let raf = 0;
-    let scrollRaf = 0;
-    let t0 = 0;
-    let previousY = window.scrollY;
-    let direction = 0;
-    let queued = false;
-    let navbarHidden = false;
-    let sectionStart = 0;
-    let W = 0;
-    let H = 0;
-    let frameTop = 0;
-    let S = 0;
+    let revealTimer = 0;
 
-    let hasPlayedOnce = false;
-
-    const measure = () => {
-      const stageRect = stage.getBoundingClientRect();
-      const frameRect = reveal.getBoundingClientRect();
-      W = reveal.clientWidth || stage.clientWidth;
-      H = reveal.clientHeight || stage.clientHeight;
-      frameTop = frameRect.top - stageRect.top;
-      S = ball.offsetWidth;
-    };
-
-    const measureBounds = () => {
-      const rect = section.getBoundingClientRect();
-      sectionStart = rect.top + window.scrollY;
-    };
-
-    const play = () => video.play().catch(() => {});
-
-    const setNavbarHidden = (hidden: boolean) => {
-      if (navbarHidden === hidden) return;
-      navbarHidden = hidden;
-      onFullscreenChange?.(hidden);
-    };
-
-    const draw = (t: number) => {
-      const floorY = frameTop + H * 0.5 - S / 2;
-      const startY = frameTop - S * 1.5;
-      let y = floorY;
-      let scale = 1;
-      let opacity = 1;
-      let r = 0;
-
-      if (t < T_DROP) {
-        const u = t / T_DROP;
-        y = startY + (floorY - startY) * u * u;
-      } else if (t < T_B1) {
-        const u = (t - T_DROP) / (T_B1 - T_DROP);
-        y = floorY - H * 0.18 * 4 * u * (1 - u);
-      } else if (t < T_B2) {
-        const u = (t - T_B1) / (T_B2 - T_B1);
-        y = floorY - H * 0.06 * 4 * u * (1 - u);
-      } else {
-        const u = Math.min(1, (t - T_B2) / (T_TOTAL - T_B2));
-        const fade = Math.min(1, u / 0.35);
-        const R = Math.hypot(W / 2, H / 2) * 1.15;
-        r = S / 2 + (R - S / 2) * easeInOutCubic(u);
-        opacity = 1 - fade;
-        scale = 1 + 0.35 * fade;
-      }
-
-      ball.style.transform = `translate3d(-50%, ${y}px, 0) scale(${scale})`;
-      ball.style.opacity = String(opacity);
-      reveal.style.clipPath = `circle(${r}px at ${W / 2}px ${H / 2}px)`;
-    };
-
-    /** Return the video to normal document flow without moving it on screen. */
-    const showNormal = () => {
-      cancelAnimationFrame(raf);
-      // Capture position BEFORE layout change so useLayoutEffect can correct scroll
-      pendingStageTopRef.current = stage.getBoundingClientRect().top;
-      status = "normal";
-      ball.style.opacity = "0";
-      reveal.style.clipPath = "none";
-      reveal.style.transform = "scale(1)";
-      setNavbarHidden(false);
-      play();
-      // Defer React phase change by one frame so DOM styles settle first (reduces flash)
-      requestAnimationFrame(() => {
-        setPhase("normal");
-      });
-    };
-
-    const showFinal = () => {
-      cancelAnimationFrame(raf);
-      ball.style.opacity = "0";
-      reveal.style.clipPath = "none";
-      play();
-
-      status = "expanded";
-      setPhase("expanded");
-      setNavbarHidden(true);
-    };
-
-    const resetForReplay = () => {
-      cancelAnimationFrame(raf);
-      status = "idle";
-      hasPlayedOnce = false;
-      ball.style.opacity = "1";
-      ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
-      reveal.style.clipPath = `circle(0px at ${W / 2}px ${H / 2}px)`;
-      reveal.style.transform = "scale(1)";
-      setPhase("idle");
-      setNavbarHidden(false);
-    };
-
-    const tick = () => {
-      const t = performance.now() - t0;
-      if (t >= T_TOTAL) {
-        draw(T_TOTAL);
-        showFinal();
-        return;
-      }
-      draw(t);
-      raf = requestAnimationFrame(tick);
-    };
-
-    const start = () => {
-      if (hasPlayedOnce || status === "running" || status === "expanded") return;
-      measure();
-      if (reduce.matches) {
-        hasPlayedOnce = true;
-        showNormal();
-        return;
-      }
-      hasPlayedOnce = true;
-      status = "running";
-      setPhase("running");
-      setNavbarHidden(true);
-      t0 = performance.now();
-      play();
-      raf = requestAnimationFrame(tick);
-    };
-
-    const check = () => {
-      scrollRaf = 0;
-      queued = false;
-
-      const rect = section.getBoundingClientRect();
-      const vh = window.innerHeight;
-      sectionStart = rect.top + window.scrollY;
-      const currentY = window.scrollY;
-
-      // Reset only after leaving above, so the next downward entry can replay.
-      if (
-        hasPlayedOnce &&
-        direction < 0 &&
-        rect.top >= vh &&
-        status !== "idle"
-      ) {
-        resetForReplay();
-      }
-
-      // ── Enter from ABOVE → play cinematic ─────────────────────────────────
-      if (
-        status === "idle" &&
-        !hasPlayedOnce &&
-        direction >= 0 &&
-        rect.top < vh * (window.matchMedia("(max-width: 768px)").matches ? 0.9 : 0.75) &&
-        rect.bottom > vh * 0.2
-      ) {
-        start();
-      }
-
-      // ── Enter from BELOW → always show normal size, never ball ────────────
-      if (status === "idle" && hasPlayedOnce) {
-        showNormal();
-      }
-
-      // Hold the revealed video in place, then return it to normal flow at the
-      // end of the runway so the next archive cards scroll up naturally.
-      if (status === "expanded") {
-        const releaseAt = sectionStart + Math.max(1, section.offsetHeight - window.innerHeight);
-        if (currentY >= releaseAt - 12) {
-          showNormal();
-        }
-      }
-
-      // Pause / resume video when section leaves viewport
-      const out = rect.bottom <= 0 || rect.top >= vh;
-      if (out && !video.paused) video.pause();
-      else if (
-        !out &&
-        video.paused &&
-        status !== "idle" &&
-        status !== "running"
-      ) {
-        play();
-      }
-    };
-
-    const onScroll = () => {
-      const currentY = window.scrollY;
-      if (currentY > previousY) direction = 1;
-      else if (currentY < previousY) direction = -1;
-      previousY = currentY;
-
-      if (queued) return;
-      queued = true;
-      scrollRaf = requestAnimationFrame(check);
-    };
-
-    const onResize = () => {
-      measure();
-      measureBounds();
-      if (status === "expanded" || status === "normal") check();
-    };
-
-    // Reliable first-entry detection
-    const entryThreshold = window.matchMedia("(max-width: 768px)").matches ? 0.9 : 0.75;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
+    const observer = new IntersectionObserver(
+      ([entry]) => {
         if (!entry) return;
+
+        // Enter section → start animation once
         if (
           entry.isIntersecting &&
-          status === "idle" &&
-          !hasPlayedOnce &&
-          direction >= 0 &&
-          entry.boundingClientRect.top < window.innerHeight * entryThreshold
+          entry.intersectionRatio >= 0.32 &&
+          !hasAnimatedRef.current
         ) {
-          start();
+          hasAnimatedRef.current = true;
+
+          if (reduceMotion) {
+            setPhase("reveal");
+            void videoRef.current?.play();
+            return;
+          }
+
+          setPhase("drop");
+          revealTimer = window.setTimeout(() => {
+            setPhase("reveal");
+            void videoRef.current?.play();
+          }, 1050);
+          return;
+        }
+
+        // Leave upward → reset so it can play again next time
+        if (
+          hasAnimatedRef.current &&
+          entry.intersectionRatio < 0.15 &&
+          entry.boundingClientRect.top > 0
+        ) {
+          window.clearTimeout(revealTimer);
+          hasAnimatedRef.current = false;
+          setPhase("idle");
+          const v = videoRef.current;
+          if (v) {
+            v.pause();
+            v.currentTime = 0;
+          }
         }
       },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.01 }
+      { threshold: [0.15, 0.32] }
     );
-    io.observe(section);
 
-    measure();
-    measureBounds();
-
-    // Initial state: ball ready, clip closed
-    ball.style.opacity = "1";
-    ball.style.transform = `translate3d(-50%, ${-S * 1.5}px, 0) scale(1)`;
-    reveal.style.clipPath = `circle(0px at 50% 50%)`;
-    reveal.style.transform = "scale(1)";
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-
+    observer.observe(section);
     return () => {
-      cancelAnimationFrame(raf);
-      cancelAnimationFrame(scrollRaf);
-      io.disconnect();
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-      setNavbarHidden(false);
+      observer.disconnect();
+      window.clearTimeout(revealTimer);
     };
-  }, [onFullscreenChange]);
+  }, [reduceMotion]);
 
-  // When phase is "normal" the section is pure document flow (no sticky, no extra height)
-  const isCinematic = phase === "idle" || phase === "running" || phase === "expanded";
+  function toggleSound() {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setMuted(video.muted);
+    void video.play();
+  }
 
   return (
     <section
       ref={sectionRef}
-      aria-label="Showreel"
-      className={`showreel-section relative bg-black ${isCinematic ? "min-h-[180svh]" : ""}`}
-      data-cinematic={isCinematic}
+      id="archive"
+      aria-labelledby="archive-title"
+      className="relative overflow-hidden bg-[#050505] pt-16 md:pt-24"
     >
-        <div
-          ref={stageRef}
-          className={`${isCinematic ? "sticky top-0 h-svh" : "relative h-auto py-8 sm:py-12"} showreel-stage flex w-full items-center justify-center overflow-hidden bg-black`}
-      >
-        {/* Main showreel video */}
-        <div
-          ref={revealRef}
-          className="showreel-video-frame relative mx-auto aspect-video overflow-hidden rounded-xl sm:rounded-2xl"
-          style={{
-            clipPath: "circle(0px at 50% 50%)",
-            willChange: "clip-path, transform",
-          }}
-        >
-          {posterSrc && (
-            // Keep the poster underneath the first decoded video frame to avoid
-            // a black/white flash while mobile browsers initialize playback.
-            <img
-              src={posterSrc}
-              alt=""
-              aria-hidden="true"
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${videoReady ? "opacity-0" : "opacity-100"}`}
-            />
+      {/* Heading */}
+      <div className="mx-auto flex w-[min(1280px,calc(100%-36px))] flex-col items-start justify-between gap-6 border-b border-white/10 pb-8 md:w-[min(1280px,calc(100%-64px))] md:flex-row md:items-end md:gap-16">
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#E50914]">
+            03 / Selected work
+          </p>
+          <h2
+            id="archive-title"
+            className="font-display text-[clamp(3.5rem,18vw,6rem)] font-normal uppercase leading-[0.95] tracking-[0.05em] text-white md:text-[clamp(4.25rem,7vw,6rem)]"
+          >
+            VISUAL <span className="text-neutral-500">ARCHIVE</span>
+          </h2>
+        </div>
+        <p className="max-w-md text-sm font-light leading-relaxed text-neutral-400 md:text-base">
+          Music videos, films and brand stories shot, graded and delivered by
+          our crew. Keep scrolling to roll the reel.
+        </p>
+      </div>
+
+      {/* Stage */}
+      <div className="relative mx-auto mt-16 grid w-full place-items-center perspective-[1100px] md:mt-28 md:w-[min(1200px,calc(100%-64px))] md:aspect-video">
+        {/* Ball */}
+        <AnimatePresence>
+          {phase !== "reveal" && (
+            <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
+              <motion.div
+                key="ball"
+                initial={{ opacity: 0, y: "-70vh", rotateX: -35, rotateZ: -120, scale: 0.72 }}
+                animate={
+                  phase === "drop"
+                    ? {
+                        opacity: 1,
+                        y: [null, 18, -42, 0],
+                        rotateX: [null, 18, 4, 0],
+                        rotateZ: [null, 20, -8, 0],
+                        scale: [null, 1.06, 0.97, 1],
+                        scaleX: [null, 1.06, 0.97, 1],
+                        scaleY: [null, 0.94, 0.97, 1],
+                      }
+                    : { opacity: 0, y: "-70vh", scale: 0.72 }
+                }
+                exit={{
+                  opacity: 0,
+                  scale: 7,
+                  transition: { duration: 0.78, ease: [0.7, 0, 0.25, 1] },
+                }}
+                transition={
+                  phase === "drop"
+                    ? { duration: 1.05, ease: [0.2, 0.72, 0.24, 1], times: [0, 0.68, 0.82, 1] }
+                    : { duration: 0.3 }
+                }
+                className="relative aspect-square w-[clamp(130px,13vw,210px)] overflow-hidden rounded-full border border-white/30"
+                style={{
+                  background:
+                    "radial-gradient(circle at 31% 24%, rgba(255,255,255,0.95) 0 2%, rgba(255,255,255,0.28) 5%, transparent 19%), radial-gradient(circle at 35% 30%, #ff5b63 0, #e50914 24%, #6d0208 62%, #130002 83%)",
+                  boxShadow:
+                    "inset -28px -32px 48px rgba(0,0,0,0.72), inset 14px 12px 30px rgba(255,255,255,0.13), 0 0 55px rgba(229,9,20,0.38)",
+                }}
+              >
+                <span className="absolute left-[18%] top-[13%] h-[21%] w-[42%] -rotate-[28deg] rounded-full bg-white/20 blur-[13px]" />
+              </motion.div>
+
+              {/* Shadow */}
+              {phase === "drop" && (
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0.3 }}
+                  animate={{
+                    opacity: [0, 0, 0.85, 0.28, 0.58],
+                    scaleX: [0.3, 0.3, 1.12, 0.72, 0.9],
+                  }}
+                  transition={{ duration: 1.05, ease: "easeOut", times: [0, 0.42, 0.68, 0.82, 1] }}
+                  className="absolute top-[calc(50%+clamp(80px,8vw,130px))] h-[26px] w-[clamp(125px,12vw,195px)] rounded-full bg-[#E50914]/30 blur-[15px]"
+                />
+              )}
+            </div>
           )}
+        </AnimatePresence>
+
+        {/* Video mask — circular reveal */}
+        <motion.div
+          className="relative z-20 aspect-video w-full overflow-hidden border border-white/15 bg-[#080808] md:rounded-none"
+          initial={{ clipPath: "circle(0% at 50% 50%)", opacity: 0, borderRadius: "50%" }}
+          animate={
+            phase === "reveal"
+              ? {
+                  clipPath: "circle(78% at 50% 50%)",
+                  opacity: 1,
+                  borderRadius: ["50%", "28px", "0px"],
+                }
+              : { clipPath: "circle(0% at 50% 50%)", opacity: 0, borderRadius: "50%" }
+          }
+          transition={
+            phase === "reveal"
+              ? { duration: 1.15, delay: 0.18, ease: [0.76, 0, 0.24, 1] }
+              : { duration: 0.3 }
+          }
+        >
           <video
             ref={videoRef}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${videoReady || !posterSrc ? "opacity-100" : "opacity-0"}`}
-            src={videoSrc}
+            className="block h-full w-full object-cover"
             poster={posterSrc}
-            onLoadedData={() => setVideoReady(true)}
-            onError={() => setVideoReady(false)}
-            muted
+            muted={muted}
             loop
             playsInline
-            autoPlay={false}
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            controlsList="nodownload nofullscreen noremoteplayback"
-          />
-        </div>
+            preload="metadata"
+            aria-label="Onset Production director's cut showreel"
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
 
-        {/* Red ball (only visible during cinematic phase) */}
-        <div
-          ref={ballRef}
-          className="pointer-events-none absolute top-0 rounded-full"
-          style={{
-            left: "50%",
-            width: "clamp(56px, 9vmin, 96px)",
-            height: "clamp(56px, 9vmin, 96px)",
-            background:
-              "radial-gradient(circle at 32% 28%, #ff8a7a 0%, #e11d2e 38%, #7a0a14 100%)",
-            boxShadow: "0 20px 60px rgba(225,29,46,0.35)",
-            transform: "translate3d(-50%, -200px, 0)",
-            willChange: "transform, opacity",
-            opacity: isCinematic ? 1 : 0,
-          }}
-        >
-          <span
-            className="absolute rounded-full bg-white/60 blur-[3px]"
-            style={{ left: "22%", top: "16%", width: "22%", height: "14%" }}
-          />
-        </div>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/40" />
 
-        <div className="pointer-events-none absolute left-6 top-6 text-sm font-medium text-white/80">
-          Director&apos;s Cut
-        </div>
+          <p className="absolute left-4 top-3.5 text-xs font-medium text-white/80 md:left-6 md:top-5 md:text-sm">
+            Director&apos;s Cut
+          </p>
 
-        <button
-          type="button"
-          onClick={() => setMuted((m) => !m)}
-          aria-pressed={!muted}
-          aria-label={muted ? "Turn sound on" : "Turn sound off"}
-          className="absolute bottom-3 right-3 flex size-11 items-center justify-center rounded-full bg-black/65 text-white shadow-lg backdrop-blur focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-5 sm:right-5 sm:size-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
-        >
-          {muted ? <VolumeX className="size-5" aria-hidden="true" /> : <Volume2 className="size-5" aria-hidden="true" />}
-          <span className="hidden sm:inline">{muted ? "Sound off" : "Sound on"}</span>
-        </button>
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="absolute bottom-3.5 right-3.5 rounded-full border border-white/15 bg-black/60 px-3.5 py-2 text-xs text-white backdrop-blur md:bottom-5 md:right-5 md:px-4 md:text-sm"
+            aria-label={muted ? "Turn showreel sound on" : "Mute showreel"}
+          >
+            {muted ? "Sound off" : "Sound on"}
+          </button>
+        </motion.div>
       </div>
+
+      {/* Spacer so next section doesn't collide */}
+      <div className="h-16 md:h-24" />
     </section>
   );
 }
