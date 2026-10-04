@@ -177,6 +177,9 @@ export default function VisualArchiveReveal({
 
   const shrinkOnDesktop = !isMobile && phase === "reveal";
 
+  // Ball fall distance: shorter on mobile because the stage is only video-height.
+  const dropFrom = isMobile ? "-45vh" : "-110vh";
+
   /* ---------------------------------------------------------
    * RENDER
    * --------------------------------------------------------- */
@@ -215,9 +218,11 @@ export default function VisualArchiveReveal({
 
       <div
         ref={stageRef}
-        className="relative mt-16 min-h-[180vh] w-full md:mt-28"
+        className="relative mt-16 w-full md:mt-28 md:min-h-[180vh]"
       >
-        <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden">
+        {/* Mobile: stage is exactly the video's 16:9 size (no black bars, no sticky).
+            Desktop: full-screen sticky stage for the shrink effect. */}
+        <div className="relative flex aspect-video w-full items-center justify-center md:sticky md:top-0 md:aspect-auto md:h-screen md:overflow-hidden">
           {/* BALL */}
 
           <AnimatePresence>
@@ -227,7 +232,7 @@ export default function VisualArchiveReveal({
                   key="ball"
                   initial={{
                     opacity: 0,
-                    y: "-110vh",
+                    y: dropFrom,
                     rotateX: -35,
                     rotateZ: -120,
                     scale: 0.72,
@@ -236,7 +241,7 @@ export default function VisualArchiveReveal({
                     phase === "drop"
                       ? {
                           opacity: [0, 1, 1, 1],
-                          y: ["-110vh", "0vh", "-7vh", "0vh"],
+                          y: [dropFrom, "0vh", "-7vh", "0vh"],
                           rotateX: [-35, 18, 4, 0],
                           rotateZ: [-120, 20, -8, 0],
                           scale: [0.72, 1.06, 0.97, 1],
