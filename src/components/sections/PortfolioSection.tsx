@@ -1,25 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Film } from "lucide-react";
 import VisualArchiveReveal from "@/components/ui/visual-archive-reveal";
+import WorkTimeline from "@/components/sections/WorkTimeline";
 
 interface PortfolioSectionProps {
   onFullscreenChange?: (hidden: boolean) => void;
 }
-
-const CLIENT_VIDEOS = [
-  {
-    id: "client-1",
-    title: "Client Project 01",
-    subtitle: "Music Video · 2025",
-  },
-  {
-    id: "client-2",
-    title: "Client Project 02",
-    subtitle: "EP Visualizer · 2025",
-  },
-];
 
 export default function PortfolioSection({ onFullscreenChange }: PortfolioSectionProps) {
   return (
@@ -32,8 +19,8 @@ export default function PortfolioSection({ onFullscreenChange }: PortfolioSectio
         onFullscreenChange={onFullscreenChange}
       />
 
-      {/* Client previews stay in normal flow until their media assets are available. */}
-      <ClientVideosGrid />
+      {/* Scroll timeline: 4 categories, each links to /work/<slug> */}
+      <WorkTimeline />
     </section>
   );
 }
@@ -60,53 +47,6 @@ function SectionBanner() {
           Music videos, films and brand stories shot, graded and delivered by our crew. Keep scrolling to roll the reel.
         </p> */}
       </motion.div>
-    </div>
-  );
-}
-
-function ClientVideosGrid() {
-  return (
-    <div className="client-video-panel">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pb-24 pt-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          {CLIENT_VIDEOS.map((item) => (
-            <ClientVideoCard key={item.id} {...item} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ClientVideoCard({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <div className="group">
-      <div
-        role="img"
-        aria-label={`${title} preview coming soon`}
-        className="relative flex aspect-video w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0A] text-neutral-500"
-      >
-        <Film className="size-8 text-[#E50914]/80" aria-hidden="true" />
-        <span className="font-mono text-xs uppercase tracking-[0.18em]">
-          Preview coming soon
-        </span>
-      </div>
-      <div className="mt-4 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="font-display text-xl sm:text-2xl tracking-wide uppercase text-white">
-            {title}
-          </h3>
-          <p className="text-neutral-500 text-sm mt-1 font-mono tracking-wider">
-            {subtitle}
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
