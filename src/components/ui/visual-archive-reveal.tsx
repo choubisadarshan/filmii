@@ -10,6 +10,9 @@ import {
 import { Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+const DROP_DURATION = 1.5; // seconds: fall + 2 bounces + settle
+const BOUNCE_TIMES = [0, 0.5, 0.65, 0.8, 0.9, 1];
+
 type Phase = "idle" | "drop" | "ready" | "reveal" | "paused";
 
 interface VisualArchiveRevealProps {
@@ -28,7 +31,9 @@ export default function VisualArchiveReveal({
   const videoRef = useRef<HTMLVideoElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const clickScrollYRef = useRef(0);
-  const hasRevealedRef = useRef(false);
+  // true while the user has been to the Hero and the ball/reveal has not been used yet
+  const hasVisitedHeroRef = useRef(false);
+  const phaseRef = useRef<Phase>("idle");
 
   const wasIntersectingRef = useRef(false);
   const dropTimerRef = useRef<number | undefined>(undefined);
@@ -37,8 +42,14 @@ export default function VisualArchiveReveal({
   const [muted, setMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [revealedOnce, setRevealedOnce] = useState(false);
+  // Pixel values (numbers animate far smoother than "vh" strings). Set right before the drop.
+  const [drop, setDrop] = useState({ from: -800, b1: 56, b2: 18 });
 
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   /* ---------------------------------------------------------
    * RESPONSIVE CHECK
@@ -80,51 +91,124 @@ export default function VisualArchiveReveal({
   );
 
   /* ---------------------------------------------------------
-   * BALL ENTRY
+   * HERO FLAG  (hasVisitedHero)
+   *
+   * true  -> user has been at the Hero: next time they scroll down
+   *          into the video, the ball + reveal plays.
+   * false -> ball/reveal was already used: the video is simply there.
+   *
+   * Becomes true every time the Hero is visible (also re-arms the
+   * animation when the user scrolls all the way back up).
+   * Becomes false once the ball animation has played.
+   *
+   * The Hero is the first <section> inside <main>, so no other
+   * file needs to be touched.
    * --------------------------------------------------------- */
 
   useEffect(() => {
-    const stage = stageRef.current;
+    const hero = document.querySelector("main > section");
+
+    if (!hero) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+
+      hasVisitedHeroRef.current = true;
+
+      // Re-arm: stop/rewind the video and put the ball back,
+      // so the animation plays again on the next scroll down.
+      const video = videoRef.current;
+
+      if (video && !video.paused) {
+        video.pause();
+        video.currentTime = 0;
+      }
+
+      onFullscreenChange?.(false);
+      setRevealedOnce(false);
+      setPhase((p) => (p === "drop" ? p : "idle"));
+    });
+
+    observer.observe(hero);
+
+    return () => observer.disconnect();
+  }, [onFullscreenChange]);
+
+  /* ---------------------------------------------------------
+   * VIDEO SECTION ENTRY
+   *
+   * - flag true  -> ball drops (once ~75% of the stage is visible)
+   * - flag false -> no ball, the normal (paused) video is shown
+   * --------------------------------------------------------- */
+
+  useEffect(() => {
+    const stage = stickyRef.current;
 
     if (!stage) return;
+
+    // Normal video: no ball, no circle animation.
+    const showNormalVideo = () => {
+      setRevealedOnce(true);
+      setPhase((p) => (p === "idle" ? "paused" : p));
+    };
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
 
-        if (entry.isIntersecting) {
+        const ratio = entry.intersectionRatio;
+
+        if (ratio > 0 && !hasVisitedHeroRef.current) {
+          showNormalVideo();
+          return;
+        }
+
+        if (ratio >= 0.75) {
           if (wasIntersectingRef.current) return;
 
           wasIntersectingRef.current = true;
 
-          // Ball + reveal play only once. After that the video just sits there.
-          if (hasRevealedRef.current) return;
+          if (!hasVisitedHeroRef.current) return;
 
-          // Don't replay the ball when coming back upward.
-          if (entry.boundingClientRect.top < 0) return;
-
+          // Reduced motion: static ball, no animation.
           if (reduceMotion) {
+            hasVisitedHeroRef.current = false;
             setPhase("ready");
             return;
           }
 
+          const mobile = window.innerWidth < 768;
+          const h = window.innerHeight;
+
+          setDrop({
+            // desktop stage clips at the screen edge, so start just above it
+            from: -Math.round(mobile ? h * 0.45 : h / 2 + 240),
+            b1: mobile ? 34 : 56,
+            b2: mobile ? 10 : 18,
+          });
           setPhase("drop");
 
           dropTimerRef.current = window.setTimeout(() => {
             dropTimerRef.current = undefined;
-            // Ball finished bouncing — wait for the user to click PLAY.
+
+            // Ball animation finished: flag is used up.
+            hasVisitedHeroRef.current = false;
             setPhase("ready");
-          }, 1100);
-        } else {
+          }, DROP_DURATION * 1000 + 50);
+        } else if (ratio < 0.2) {
           wasIntersectingRef.current = false;
 
           if (dropTimerRef.current !== undefined) {
             window.clearTimeout(dropTimerRef.current);
             dropTimerRef.current = undefined;
           }
+
+          // Left the section: drop back to idle so the next entry decides
+          // again (flag true -> ball, flag false -> normal video).
+          setPhase((p) => (p === "drop" || p === "ready" ? "idle" : p));
         }
       },
-      { threshold: 0.05 },
+      { threshold: [0, 0.2, 0.75] },
     );
 
     observer.observe(stage);
@@ -134,6 +218,7 @@ export default function VisualArchiveReveal({
 
       if (dropTimerRef.current !== undefined) {
         window.clearTimeout(dropTimerRef.current);
+        dropTimerRef.current = undefined;
       }
     };
   }, [reduceMotion]);
@@ -154,7 +239,14 @@ export default function VisualArchiveReveal({
     video.volume = 1;
     setMuted(false);
 
-    void video.play().catch(() => {
+    void video.play().catch((err: unknown) => {
+      // pause() while play() is pending rejects with AbortError: that is us
+      // stopping the video on purpose, not a blocked autoplay.
+      if (err instanceof DOMException && err.name === "AbortError") return;
+
+      // The user may already have scrolled away (video stopped): do nothing then.
+      if (phaseRef.current !== "reveal") return;
+
       // Rare: sound blocked. Fall back to muted playback.
       video.muted = true;
       setMuted(true);
@@ -172,7 +264,7 @@ export default function VisualArchiveReveal({
 
     if (phase !== "ready") return;
 
-    hasRevealedRef.current = true;
+    hasVisitedHeroRef.current = false; // animation used up
     setPhase("reveal");
 
     // Hide the navbar only on desktop, where the video goes full-screen.
@@ -211,6 +303,7 @@ export default function VisualArchiveReveal({
           video.currentTime = 0;
         }
 
+        phaseRef.current = "paused";
         onFullscreenChange?.(false);
         setRevealedOnce(true);
         setPhase("paused");
@@ -267,8 +360,6 @@ export default function VisualArchiveReveal({
   const shrinkOnDesktop =
     !isMobile && (phase === "reveal" || phase === "paused");
 
-  // Ball fall distance: shorter on mobile because the stage is only video-height.
-  const dropFrom = isMobile ? "-45vh" : "-110vh";
 
   /* ---------------------------------------------------------
    * RENDER
@@ -316,81 +407,87 @@ export default function VisualArchiveReveal({
           ref={stickyRef}
           className="relative flex aspect-video w-full items-center justify-center md:sticky md:top-0 md:aspect-auto md:h-screen md:overflow-hidden"
         >
-          {/* BALL */}
+          {/* BALL (transform + opacity only, so it runs on the GPU) */}
 
           <AnimatePresence>
             {phase !== "reveal" && phase !== "paused" && (
               <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center">
                 <motion.div
                   key="ball"
-                  initial={{
-                    opacity: 0,
-                    y: dropFrom,
-                    rotateX: -35,
-                    rotateZ: -120,
-                    scale: 0.72,
-                  }}
+                  initial={{ opacity: 0, y: drop.from, scaleX: 0.97, scaleY: 1.05 }}
                   animate={
                     phase === "drop"
                       ? {
-                          opacity: [0, 1, 1, 1],
-                          y: [dropFrom, "0vh", "-7vh", "0vh"],
-                          rotateX: [-35, 18, 4, 0],
-                          rotateZ: [-120, 20, -8, 0],
-                          scale: [0.72, 1.06, 0.97, 1],
-                          scaleX: [1, 1.06, 0.97, 1],
-                          scaleY: [0.72, 0.94, 0.97, 1],
+                          opacity: 1,
+                          y: [drop.from, 0, -drop.b1, 0, -drop.b2, 0],
+                          scaleY: [1.05, 0.82, 1.02, 0.92, 1.01, 1],
+                          scaleX: [0.97, 1.12, 0.99, 1.06, 0.995, 1],
                         }
                       : {
                           opacity: phase === "ready" ? 1 : 0,
-                          y: "0vh",
-                          rotateX: 0,
-                          rotateZ: 0,
-                          scale: 1,
+                          y: 0,
+                          scaleX: 1,
+                          scaleY: 1,
                         }
                   }
                   exit={{
                     opacity: 0,
-                    scale: 7,
-                    transition: {
-                      duration: 0.78,
-                      ease: [0.7, 0, 0.25, 1],
-                    },
+                    scale: 4,
+                    originY: 0.5,
+                    transition: { duration: 0.65, ease: [0.7, 0, 0.25, 1] },
                   }}
                   transition={
                     phase === "drop"
                       ? {
-                          duration: 1.05,
-                          ease: [0.2, 0.72, 0.24, 1],
-                          times: [0, 0.68, 0.84, 1],
+                          opacity: { duration: 0.15 },
+                          y: {
+                            duration: DROP_DURATION,
+                            times: BOUNCE_TIMES,
+                            // fall = ease-in (gravity), each rise = ease-out, each fall = ease-in
+                            ease: ["easeIn", "easeOut", "easeIn", "easeOut", "easeIn"],
+                          },
+                          scaleX: { duration: DROP_DURATION, times: BOUNCE_TIMES, ease: "linear" },
+                          scaleY: { duration: DROP_DURATION, times: BOUNCE_TIMES, ease: "linear" },
                         }
-                      : { duration: 0.3 }
+                      : { duration: 0.25 }
                   }
                   className="relative aspect-square w-[clamp(130px,13vw,210px)] overflow-hidden rounded-full border border-white/30"
                   style={{
+                    originY: 1, // squash from the ground, not the center
+                    willChange: "transform, opacity",
                     background:
                       "radial-gradient(circle at 31% 24%, rgba(255,255,255,0.95) 0 2%, rgba(255,255,255,0.28) 5%, transparent 19%), radial-gradient(circle at 35% 30%, #ff5b63 0, #e50914 24%, #6d0208 62%, #130002 83%)",
                     boxShadow:
                       "inset -28px -32px 48px rgba(0,0,0,0.72), inset 14px 12px 30px rgba(255,255,255,0.13), 0 0 55px rgba(229,9,20,0.38)",
                   }}
                 >
-                  <span className="absolute left-[18%] top-[13%] h-[21%] w-[42%] -rotate-[28deg] rounded-full bg-white/20 blur-[13px]" />
+                  <span className="absolute left-[18%] top-[13%] h-[21%] w-[42%] -rotate-[28deg] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.3),transparent_70%)]" />
                 </motion.div>
 
-                {/* Ball shadow */}
-                {phase === "drop" && (
+                {/* Ball shadow (gradient instead of blur filter) */}
+                {(phase === "drop" || phase === "ready") && (
                   <motion.div
-                    initial={{ opacity: 0, scaleX: 0.3 }}
-                    animate={{
-                      opacity: [0, 0, 0.85, 0.28, 0.58],
-                      scaleX: [0.3, 0.3, 1.12, 0.72, 0.9],
+                    initial={{ opacity: 0, scaleX: 0.2 }}
+                    animate={
+                      phase === "drop"
+                        ? {
+                            opacity: [0, 0.75, 0.4, 0.7, 0.5, 0.6],
+                            scaleX: [0.2, 1.15, 0.8, 1.05, 0.95, 1],
+                          }
+                        : { opacity: 0.6, scaleX: 1 }
+                    }
+                    exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                    transition={
+                      phase === "drop"
+                        ? { duration: DROP_DURATION, times: BOUNCE_TIMES, ease: "linear" }
+                        : { duration: 0.2 }
+                    }
+                    style={{
+                      willChange: "transform, opacity",
+                      background:
+                        "radial-gradient(ellipse at center, rgba(229,9,20,0.5) 0%, rgba(229,9,20,0.18) 45%, transparent 70%)",
                     }}
-                    transition={{
-                      duration: 1.05,
-                      ease: "easeOut",
-                      times: [0, 0.42, 0.68, 0.82, 1],
-                    }}
-                    className="absolute top-[calc(50%+clamp(80px,8vw,130px))] h-[26px] w-[clamp(125px,12vw,195px)] rounded-full bg-[#E50914]/30 blur-[15px]"
+                    className="absolute top-[calc(50%+clamp(80px,8vw,130px))] h-[34px] w-[clamp(140px,14vw,220px)] rounded-full"
                   />
                 )}
               </div>
@@ -409,7 +506,8 @@ export default function VisualArchiveReveal({
                 exit={{ opacity: 0, scale: 1.5 }}
                 whileHover={{ scale: 1.06 }}
                 whileTap={{ scale: 0.94 }}
-                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.45, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                style={{ willChange: "transform, opacity" }}
                 className="group absolute z-[60] flex aspect-square w-[clamp(150px,16vw,220px)] items-center justify-center rounded-full outline-none"
                 aria-label="Play showreel with sound"
               >
@@ -417,6 +515,7 @@ export default function VisualArchiveReveal({
                 {[0, 1].map((i) => (
                   <motion.span
                     key={i}
+                    style={{ willChange: "transform, opacity" }}
                     className="absolute inset-0 rounded-full border border-[#E50914]/70"
                     initial={{ scale: 1, opacity: 0 }}
                     animate={{ scale: [1, 1.55], opacity: [0.55, 0] }}
@@ -433,6 +532,7 @@ export default function VisualArchiveReveal({
                 <motion.span
                   className="absolute inset-0 rounded-full"
                   style={{
+                    willChange: "transform",
                     background:
                       "conic-gradient(from 0deg, rgba(255,255,255,0) 0deg, rgba(255,255,255,0.95) 70deg, rgba(229,9,20,0.9) 120deg, rgba(255,255,255,0) 190deg, rgba(255,255,255,0) 360deg)",
                     WebkitMask:
@@ -447,12 +547,12 @@ export default function VisualArchiveReveal({
                 <span className="absolute inset-0 rounded-full border border-white/15" />
 
                 {/* Frosted glass core with play icon */}
-                <span className="relative flex aspect-square w-[34%] min-w-[64px] items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-md transition-colors duration-300 group-hover:bg-white/20">
+                <span className="relative flex aspect-square w-[34%] min-w-[64px] items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] transition-colors duration-300 group-hover:bg-white/20">
                   <Play size={26} fill="white" className="ml-1 text-white drop-shadow" />
                 </span>
 
                 {/* Label pill */}
-                <span className="absolute -bottom-9 flex items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-black/50 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/80 backdrop-blur">
+                <span className="absolute -bottom-9 flex items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-black/65 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/80">
                   <Volume2 size={12} className="text-[#E50914]" />
                   Play showreel
                 </span>
@@ -500,9 +600,11 @@ export default function VisualArchiveReveal({
                   }
             }
             transition={
-              phase === "reveal" || phase === "paused"
-                ? { duration: 1.15, ease: [0.76, 0, 0.24, 1] }
-                : { duration: 0.25 }
+              phase === "paused"
+                ? { duration: 0 }
+                : phase === "reveal"
+                  ? { duration: 1.15, ease: [0.76, 0, 0.24, 1] }
+                  : { duration: 0.25 }
             }
           >
             <video
@@ -530,7 +632,7 @@ export default function VisualArchiveReveal({
             <button
               type="button"
               onClick={toggleSound}
-              className="absolute bottom-3.5 right-3.5 flex items-center gap-2 rounded-full border border-white/15 bg-black/60 px-3.5 py-2 text-xs text-white backdrop-blur md:bottom-5 md:right-5 md:px-4 md:text-sm"
+              className="absolute bottom-3.5 right-3.5 flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-3.5 py-2 text-xs text-white md:bottom-5 md:right-5 md:px-4 md:text-sm"
               aria-label={muted ? "Turn showreel sound on" : "Mute showreel"}
             >
               {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -550,10 +652,10 @@ export default function VisualArchiveReveal({
                   className="group absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/35 outline-none"
                   aria-label="Play showreel with sound"
                 >
-                  <span className="flex aspect-square w-[72px] items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-md transition-transform duration-300 group-hover:scale-110 md:w-[88px]">
+                  <span className="flex aspect-square w-[72px] items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-300 group-hover:scale-110 md:w-[88px]">
                     <Play size={28} fill="white" className="ml-1 text-white drop-shadow" />
                   </span>
-                  <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/80 backdrop-blur">
+                  <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/65 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/80">
                     <Volume2 size={12} className="text-[#E50914]" />
                     Tap to play
                   </span>
