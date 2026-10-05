@@ -79,7 +79,7 @@ function WorkCard({ item }: { item: WorkItem }) {
           src={item.videoSrc}
           poster={item.posterSrc}
           controls
-          preload="metadata"
+          preload="none"
           className="aspect-video w-full rounded-xl border border-white/10 bg-black object-cover"
         />
       ) : (

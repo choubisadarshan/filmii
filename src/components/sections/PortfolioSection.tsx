@@ -15,6 +15,7 @@ export default function PortfolioSection({ onFullscreenChange }: PortfolioSectio
       {/* Cinematic showreel (ball + circle reveal – replays on downward entry) */}
       <VisualArchiveReveal
         videoSrc="/showcase_video.mp4"
+        mobileVideoSrc="/showcase_video_mobile.mp4"
         posterSrc="/showcase_poster.jpg"
         onFullscreenChange={onFullscreenChange}
       />

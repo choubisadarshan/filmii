@@ -17,12 +17,14 @@ type Phase = "idle" | "drop" | "ready" | "reveal" | "paused";
 
 interface VisualArchiveRevealProps {
   videoSrc?: string;
+  mobileVideoSrc?: string;
   posterSrc?: string;
   onFullscreenChange?: (hidden: boolean) => void;
 }
 
 export default function VisualArchiveReveal({
   videoSrc = "/showcase_video.mp4",
+  mobileVideoSrc,
   posterSrc = "/showcase_poster.jpg",
   onFullscreenChange,
 }: VisualArchiveRevealProps) {
@@ -121,7 +123,7 @@ export default function VisualArchiveReveal({
 
       if (video && !video.paused) {
         video.pause();
-        video.currentTime = 0;
+        if (video.readyState > 0) video.currentTime = 0;
       }
 
       onFullscreenChange?.(false);
@@ -609,16 +611,15 @@ export default function VisualArchiveReveal({
           >
             <video
               ref={videoRef}
+              src={isMobile && mobileVideoSrc ? mobileVideoSrc : videoSrc}
               className="block h-full w-full object-cover"
               poster={posterSrc}
               muted={muted}
               loop
               playsInline
-              preload="metadata"
+              preload="none"
               aria-label="Onset Production director's cut showreel"
-            >
-              <source src={videoSrc} type="video/mp4" />
-            </video>
+            />
 
             {/* Cinematic overlay */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/40" />
