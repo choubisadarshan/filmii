@@ -13,7 +13,9 @@ import { CATEGORIES, type WorkCategory } from "@/data/work";
 
 export default function WorkTimeline() {
   return (
-    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-16 pb-28">
+    <div
+     id="work-categories"
+     className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-16 pb-28">
       <span className="block mb-10 font-mono text-xs uppercase tracking-[0.2em] text-[#E50914] font-semibold">
         Browse by category
       </span>

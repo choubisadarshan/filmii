@@ -25,7 +25,7 @@ export default function CategoryGallery({ category }: { category: WorkCategory }
               ONSET <span className="text-[#E50914]">PRODUCTION</span>
             </Link>
             <Link
-              href="/#work"
+              href="/#work-categories"
               className="inline-flex items-center gap-2 font-mono text-xs tracking-widest text-neutral-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="size-4" /> BACK TO WORK

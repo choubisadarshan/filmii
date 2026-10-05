@@ -10,6 +10,7 @@ import CustomCursor from "@/components/fx/CustomCursor";
 import LoadingScreen from "@/components/fx/LoadingScreen";
 import Navbar from "@/components/layout/Navbar";
 import HeroSection from "@/components/sections/HeroSection";
+import ScrollToHash from "@/components/ui/scroll-to-hash";
 
 // Dynamically import below-the-fold sections & overlays for optimal initial JS payload
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"), { ssr: false });
@@ -29,6 +30,7 @@ export default function Home() {
       <CartProvider>
         {/* Initial Film Slate Loader */}
         <LoadingScreen />
+        <ScrollToHash />
 
         {/* Global Film Grain Overlay & Red Spotlight */}
         <FilmGrain />
