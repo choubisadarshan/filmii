@@ -12,7 +12,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative bg-[#050505] border-t border-white/10 text-white pt-20 pb-10 px-6 sm:px-8 lg:px-12 overflow-hidden">
+    <footer className="relative bg-[#050505] border-t border-white/10 text-white pt-12 pb-10 md:pt-20 px-6 sm:px-8 lg:px-12 overflow-hidden">
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Top Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-start">

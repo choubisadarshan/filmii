@@ -60,7 +60,7 @@ export default function ServicesSection() {
   const { playHoverSound, playShutterSound } = useSound();
 
   return (
-    <section id="services" className="relative -mt-[40vh] sm:-mt-[50vh] z-20 pt-16 pb-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
+    <section id="services" className="relative -mt-[40vh] sm:-mt-[50vh] z-20 pt-16 pb-16 sm:pb-24 md:pb-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <motion.div

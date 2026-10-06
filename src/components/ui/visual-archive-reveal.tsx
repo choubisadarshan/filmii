@@ -405,7 +405,7 @@ export default function VisualArchiveReveal({
 
       <div
         ref={stageRef}
-        className="relative mt-16 w-full md:mt-28 md:min-h-[180vh]"
+        className="relative mt-8 w-full md:mt-28 md:min-h-[180vh]"
       >
         {/* Mobile: stage is exactly the video's 16:9 size (no black bars, no sticky).
             Desktop: full-screen sticky stage for the shrink effect. */}
@@ -672,7 +672,7 @@ export default function VisualArchiveReveal({
       </div>
 
       {/* Spacer */}
-      <div className="h-16 md:h-24" />
+      <div className="h-6 md:h-24" />
     </section>
   );
 }

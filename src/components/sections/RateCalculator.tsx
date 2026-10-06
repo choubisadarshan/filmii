@@ -45,7 +45,7 @@ export default function RateCalculator() {
   };
 
   return (
-    <section id="calculator" className="relative py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
+    <section id="calculator" className="relative py-16 sm:py-24 md:py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <motion.div
@@ -321,4 +321,3 @@ export default function RateCalculator() {
     </section>
   );
 }
-

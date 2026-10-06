@@ -47,7 +47,7 @@ export default function ContactSection() {
   };
 
   return (
-    <section id="contact" className="relative py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
+    <section id="contact" className="relative py-16 sm:py-24 md:py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Cinematic Ending Headline */}
         <motion.div

@@ -15,7 +15,7 @@ export default function WorkTimeline() {
   return (
     <div
       id="work-categories"
-      className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-16 pb-28"
+      className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-10 pb-16 sm:pt-16 sm:pb-28"
     >
       <div className="grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-20">
         {/* sticky heading (like the reference: eyebrow + title) */}
