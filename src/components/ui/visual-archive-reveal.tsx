@@ -161,6 +161,10 @@ export default function VisualArchiveReveal({
         const ratio = entry.intersectionRatio;
 
         if (ratio > 0 && !hasVisitedHeroRef.current) {
+          // Ball already dropped and is waiting for a click: keep it there,
+          // never reveal the video without a click.
+          if (phaseRef.current === "ready") return;
+
           showNormalVideo();
           return;
         }
@@ -205,9 +209,9 @@ export default function VisualArchiveReveal({
             dropTimerRef.current = undefined;
           }
 
-          // Left the section: drop back to idle so the next entry decides
-          // again (flag true -> ball, flag false -> normal video).
-          setPhase((p) => (p === "drop" || p === "ready" ? "idle" : p));
+          // Left the section mid-drop: reset so the next entry drops the ball again.
+          // If the ball is already waiting ("ready"), it stays until the user clicks it.
+          setPhase((p) => (p === "drop" ? "idle" : p));
         }
       },
       { threshold: [0, 0.2, 0.75] },
