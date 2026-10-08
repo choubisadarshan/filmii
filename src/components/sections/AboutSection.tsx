@@ -65,11 +65,11 @@ export default function AboutSection() {
 
             <div className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10 font-mono">
               <div>
-                <span className="font-display text-4xl sm:text-5xl text-white block tracking-wider">150+</span>
+                <span className="font-display text-4xl sm:text-5xl text-white block tracking-wider">15+</span>
                 <span className="text-xs text-neutral-400 uppercase mt-1 block">MUSIC VIDEOS</span>
               </div>
               <div>
-                <span className="font-display text-4xl sm:text-5xl text-[#E50914] block tracking-wider">45+</span>
+                <span className="font-display text-4xl sm:text-5xl text-[#E50914] block tracking-wider">4+</span>
                 <span className="text-xs text-neutral-400 uppercase mt-1 block">EP VISUALIZERS</span>
               </div>
               <div>
@@ -103,7 +103,7 @@ export default function AboutSection() {
                   FOUNDER & EXECUTIVE DIRECTOR
                 </span>
                 <h4 className="font-display text-3xl text-white uppercase tracking-wider">
-                  DARSHAN @ ONSET
+                  NARENDRA @ONSET
                 </h4>
               </div>
             </div>
