@@ -68,7 +68,7 @@ export default function CartDrawer() {
                   <h3 className="font-display text-2xl tracking-wider text-white uppercase">
                     GEAR <span className="text-red-600">RENTAL CART</span>
                   </h3>
-                  <p className="text-xs font-mono text-neutral-400">
+                  <p className="text-[13px] font-mono text-neutral-400">
                     {cart.length} PACKAGE ITEM{cart.length !== 1 ? "S" : ""} SELECTED
                   </p>
                 </div>
@@ -120,7 +120,7 @@ export default function CartDrawer() {
                     <div className="flex-1 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className="text-[10px] font-mono text-red-500 uppercase tracking-widest block font-semibold">
+                          <span className="text-[11px] font-mono text-red-500 uppercase tracking-widest block font-semibold">
                             {item.category}
                           </span>
                           <h4 className="font-semibold text-white text-sm leading-snug">
@@ -142,7 +142,7 @@ export default function CartDrawer() {
 
                       <div className="flex justify-between items-end mt-2">
                         {/* Days Counter */}
-                        <div className="flex items-center gap-1.5 text-xs font-mono bg-neutral-950 px-2 py-1 rounded border border-neutral-800">
+                        <div className="flex items-center gap-1.5 text-[13px] font-mono bg-neutral-950 px-2 py-1 rounded border border-neutral-800">
                           <Calendar className="w-3 h-3 text-red-500" />
                           <span className="text-neutral-300">DAYS:</span>
                           <input
@@ -160,7 +160,7 @@ export default function CartDrawer() {
 
                         {/* Price Calculation */}
                         <div className="text-right">
-                          <span className="text-[10px] font-mono text-neutral-500 block">
+                          <span className="text-[11px] font-mono text-neutral-500 block">
                             ${item.dailyRate}/DAY
                           </span>
                           <span className="font-bold text-red-500 font-mono text-sm">
@@ -194,7 +194,7 @@ export default function CartDrawer() {
                       playHoverSound();
                       clearCart();
                     }}
-                    className="py-3 px-4 rounded-xl border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 font-mono text-xs uppercase tracking-wider transition-colors"
+                    className="py-3 px-4 rounded-xl border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 font-mono text-[13px] uppercase tracking-wider transition-colors"
                   >
                     CLEAR LIST
                   </button>
@@ -202,7 +202,7 @@ export default function CartDrawer() {
                   <button
                     onClick={handleCheckout}
                     disabled={submitted}
-                    className="py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,0,0,0.5)] transition-all"
+                    className="py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold font-mono text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,0,0,0.5)] transition-all"
                   >
                     {submitted ? (
                       <>

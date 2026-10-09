@@ -12,7 +12,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative bg-[#050505] border-t border-white/10 text-white pt-12 pb-10 md:pt-20 px-6 sm:px-8 lg:px-12 overflow-hidden">
+    <footer className="relative bg-[#050505] border-t border-white/10 text-white pt-14 pb-8 md:pt-20 md:pb-10 px-6 sm:px-8 lg:px-12 overflow-hidden">
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Top Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
@@ -27,7 +27,7 @@ export default function Footer() {
           </div>
 
           {/* Navigation Links */}
-          <div className="md:col-span-3 font-mono text-xs space-y-3">
+          <div className="md:col-span-3 font-mono text-[13px] space-y-3">
             <span className="text-[#E50914] font-bold block uppercase tracking-widest">
               NAVIGATION
             </span>
@@ -61,7 +61,7 @@ export default function Footer() {
           </div>
 
           {/* Socials & Dispatch Hubs */}
-          <div className="md:col-span-3 font-mono text-xs space-y-3">
+          <div className="md:col-span-3 font-mono text-[13px] space-y-3">
             <span className="text-[#E50914] font-bold block uppercase tracking-widest">
               STUDIO HUBS
             </span>
@@ -84,13 +84,13 @@ export default function Footer() {
 
         {/* Oversized Subtle Studio Typography Watermark */}
         <div className="py-4 border-t border-b border-white/5 overflow-hidden select-none">
-          <h2 className="font-display text-[11vw] leading-none text-neutral-900 uppercase tracking-tighter text-center">
+          <h2 className="font-display text-[11vw] leading-none text-neutral-700 md:text-neutral-900 uppercase tracking-tighter text-center">
             ONSET PRODUCTION
           </h2>
         </div>
 
         {/* Bottom Bar & Scroll Back to Top */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 font-mono text-xs text-neutral-400">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 font-mono text-[13px] text-neutral-400">
           <div>
             © {new Date().getFullYear()} ONSETPRODUCTION. ALL RIGHTS RESERVED.
           </div>

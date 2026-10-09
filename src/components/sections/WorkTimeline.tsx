@@ -15,12 +15,12 @@ export default function WorkTimeline() {
   return (
     <div
       id="work-categories"
-      className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-10 pb-16 sm:pt-16 sm:pb-28"
+      className="scroll-mt-[120px] max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-10 pb-16 md:pt-16 md:pb-28"
     >
       <div className="grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-20">
         {/* sticky heading (like the reference: eyebrow + title) */}
         <div className="lg:sticky lg:top-32 lg:self-start">
-          <span className="block font-mono text-xs uppercase tracking-[0.2em] text-[#E50914] font-semibold">
+          <span className="block font-mono text-[13px] uppercase tracking-[0.2em] text-[#E50914] font-semibold">
             Browse by category
           </span>
           <h2 className="mt-4 font-display text-4xl sm:text-5xl lg:text-6xl uppercase leading-[0.95] tracking-wide text-white">
@@ -71,7 +71,7 @@ function TimelineItem({
   useMotionValueEvent(scrollYProgress, "change", (v) => setActive(v > 0));
 
   return (
-    <li ref={ref} className={`relative pl-14 sm:pl-16 ${isLast ? "" : "pb-16 sm:pb-24"}`}>
+    <li ref={ref} className={`relative pl-14 sm:pl-16 ${isLast ? "" : "pb-12 sm:pb-24"}`}>
       {/* grey track + red fill that grows while you scroll */}
       {!isLast && (
         <>
@@ -103,6 +103,14 @@ function TimelineItem({
 
       <Link
         href={`/work/${category.slug}`}
+        onClick={() => {
+          // remember where we were, so "back" returns to exactly this spot
+          try {
+            sessionStorage.setItem("onset_home_scroll", String(Math.round(window.scrollY)));
+          } catch {
+            // ignore
+          }
+        }}
         className="group mt-3 flex w-fit items-center gap-3"
       >
         <h3

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { RevealDiv } from "@/components/ui/reveal";
 import { ArrowRight } from "lucide-react";
 import { useSound } from "@/components/fx/SoundProvider";
 
@@ -60,19 +61,18 @@ export default function ServicesSection() {
   const { playHoverSound, playShutterSound } = useSound();
 
   return (
-    <section id="services" className="relative -mt-[40vh] sm:-mt-[50vh] z-20 pt-16 pb-16 sm:pb-24 md:pb-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
+    <section id="services" className="relative -mt-[40vh] sm:-mt-[50vh] z-20 pt-12 pb-16 sm:pb-24 md:pt-16 md:pb-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
-        <motion.div
+        <RevealDiv
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-          style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-          className="flex flex-col md:flex-row md:items-end justify-between mb-20 border-b border-white/10 pb-8"
+                    className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-14 md:mb-20 border-b border-white/10 pb-8"
         >
           <div>
-            <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
+            <span className="text-[13px] font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
               02 / PRODUCTION CAPABILITIES
             </span>
             <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white">
@@ -82,7 +82,7 @@ export default function ServicesSection() {
           <p className="text-neutral-400 font-sans text-base max-w-md mt-4 md:mt-0 leading-relaxed font-light">
             End-to-end film production, camera crewing, and equipment dispatch engineered for record labels and directors.
           </p>
-        </motion.div>
+        </RevealDiv>
 
         {/* Editorial Alternating Left / Right Entrance Cards */}
         <div className="space-y-16">
@@ -90,22 +90,21 @@ export default function ServicesSection() {
             const isEven = index % 2 === 0;
 
             return (
-              <motion.div
+              <RevealDiv
                 key={service.num}
                 initial={{ opacity: 0, x: isEven ? -80 : 80 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-                style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-                onMouseEnter={playHoverSound}
-                className="group grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border-b border-white/10 pb-16"
+                                onMouseEnter={playHoverSound}
+                className="group grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border-b border-white/10 pb-10 md:pb-16"
               >
                 {/* Service Number & Titles */}
                 <div className="lg:col-span-5 space-y-4">
                   <span className="font-display text-6xl lg:text-7xl text-neutral-600 block group-hover:text-[#E50914] transition-colors">
                     {service.num}
                   </span>
-                  <span className="text-xs font-mono text-[#E50914] tracking-widest uppercase block font-semibold">
+                  <span className="text-[13px] font-mono text-[#E50914] tracking-widest uppercase block font-semibold">
                     {service.category}
                   </span>
                   <h3 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wider text-white uppercase group-hover:text-neutral-200 transition-colors">
@@ -119,7 +118,7 @@ export default function ServicesSection() {
                     {service.description}
                   </p>
 
-                  <ul className="space-y-2 font-mono text-xs text-neutral-400">
+                  <ul className="space-y-2 font-mono text-[13px] text-neutral-400">
                     {service.features.map((feat) => (
                       <li key={feat} className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#E50914]" />
@@ -134,8 +133,7 @@ export default function ServicesSection() {
                   <motion.div
                     whileHover={{ scale: 1.03 }}
                     transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-                    style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-                    className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/10"
+                                        className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/10"
                   >
                     <Image
                       src={service.image}
@@ -151,13 +149,13 @@ export default function ServicesSection() {
                   <a
                     href={service.href}
                     onClick={playShutterSound}
-                    className="inline-flex items-center gap-3 text-xs font-mono font-bold text-white group-hover:text-[#E50914] uppercase tracking-wider transition-colors"
+                    className="inline-flex items-center gap-3 text-[13px] font-mono font-bold text-white group-hover:text-[#E50914] uppercase tracking-wider transition-colors"
                   >
                     <span>VIEW SERVICE</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                   </a>
                 </div>
-              </motion.div>
+              </RevealDiv>
             );
           })}
         </div>

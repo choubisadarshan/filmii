@@ -92,7 +92,7 @@ export default function HeroSection() {
             className="w-full origin-left transform-gpu"
           >
             {/* Brand Tag (Safely clear below Navbar) */}
-            <div className="flex items-center gap-2 text-xs font-mono tracking-[0.25em] text-[#E50914] uppercase mb-2 sm:mb-3 font-semibold">
+            <div className="flex items-center gap-2 text-[13px] font-mono tracking-[0.25em] text-[#E50914] uppercase mb-2 sm:mb-3 font-semibold">
               <Film className="w-4 h-4 text-[#E50914]" />
               <span>ONSET PRODUCTION STUDIO</span>
             </div>
@@ -144,7 +144,7 @@ export default function HeroSection() {
                   href="#work"
                   onMouseEnter={playHoverSound}
                   onClick={playShutterSound}
-                  className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all hover:scale-105"
+                  className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-[13px] font-bold uppercase tracking-wider transition-all hover:scale-105"
                 >
                   <span>VIEW OUR WORK</span>
                   <ArrowUpRight className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function HeroSection() {
                   href="#contact"
                   onMouseEnter={playHoverSound}
                   onClick={playShutterSound}
-                  className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full bg-white/5 border border-white/20 hover:bg-white/10 text-white font-mono text-xs font-bold uppercase tracking-wider backdrop-blur-sm transition-all hover:scale-105"
+                  className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full bg-white/5 border border-white/20 hover:bg-white/10 text-white font-mono text-[13px] font-bold uppercase tracking-wider backdrop-blur-sm transition-all hover:scale-105"
                 >
                   <span>START A PROJECT</span>
                 </a>

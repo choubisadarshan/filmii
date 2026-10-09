@@ -43,6 +43,8 @@ export default function VisualArchiveReveal({
   const [phase, setPhase] = useState<Phase>("idle");
   const [muted, setMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  // How small the video ends up on desktop (width 1200px / viewport width), as a scale value
+  const [shrinkTarget, setShrinkTarget] = useState(0.62);
   const [revealedOnce, setRevealedOnce] = useState(false);
   // Pixel values (numbers animate far smoother than "vh" strings). Set right before the drop.
   const [drop, setDrop] = useState({ from: -800, b1: 56, b2: 18 });
@@ -58,7 +60,10 @@ export default function VisualArchiveReveal({
    * --------------------------------------------------------- */
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      setShrinkTarget(Math.min(1200, window.innerWidth - 64) / window.innerWidth);
+    };
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
@@ -80,16 +85,11 @@ export default function VisualArchiveReveal({
     offset: ["start start", "end end"],
   });
 
-  const desktopWidth = useTransform(
-    scrollYProgress,
-    [0.62, 0.82],
-    ["100vw", "min(1200px, calc(100vw - 64px))"],
-  );
-
+  // Scale is a GPU transform. Animating "width" re-ran layout on every scroll frame.
   const videoScale = useTransform(
     scrollYProgress,
     [0.62, 0.82],
-    [1, 0.96],
+    [1, shrinkTarget * 0.96],
   );
 
   /* ---------------------------------------------------------
@@ -558,7 +558,7 @@ export default function VisualArchiveReveal({
                 </span>
 
                 {/* Label pill */}
-                <span className="absolute -bottom-9 flex items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-black/65 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/80">
+                <span className="absolute -bottom-9 flex items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-black/65 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.24em] text-white/80">
                   <Volume2 size={12} className="text-[#E50914]" />
                   Play showreel
                 </span>
@@ -571,8 +571,7 @@ export default function VisualArchiveReveal({
           <motion.div
             className="relative z-20 overflow-hidden bg-black"
             style={{
-              // Mobile: fixed full width. Desktop: shrinks on scroll.
-              width: shrinkOnDesktop ? desktopWidth : "100vw",
+              width: "100vw",
 
               // Always 16:9 — on mobile it never changes.
               aspectRatio: "16 / 9",
@@ -582,9 +581,7 @@ export default function VisualArchiveReveal({
 
               transformOrigin: "center center",
 
-              willChange: shrinkOnDesktop
-                ? "clip-path, width, transform"
-                : "clip-path",
+              willChange: shrinkOnDesktop ? "clip-path, transform" : "clip-path",
             }}
             initial={{
               clipPath: "circle(0% at 50% 50%)",
@@ -660,7 +657,7 @@ export default function VisualArchiveReveal({
                   <span className="flex aspect-square w-[72px] items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-300 group-hover:scale-110 md:w-[88px]">
                     <Play size={28} fill="white" className="ml-1 text-white drop-shadow" />
                   </span>
-                  <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/65 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-white/80">
+                  <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/65 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.24em] text-white/80">
                     <Volume2 size={12} className="text-[#E50914]" />
                     Tap to play
                   </span>
@@ -672,7 +669,7 @@ export default function VisualArchiveReveal({
       </div>
 
       {/* Spacer */}
-      <div className="h-6 md:h-24" />
+      <div className="h-8 md:h-24" />
     </section>
   );
 }

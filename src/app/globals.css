@@ -3,6 +3,7 @@
 @theme {
   --font-display: var(--font-bebas), sans-serif;
   --font-sans: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
 @layer base {
@@ -125,4 +126,34 @@ html {
   width: min(92vw, 1200px);
   max-height: calc(100svh - 4rem);
   flex: none;
+}
+
+/* Marquee: transform-only (GPU compositor), no layout/paint per frame.
+   The track holds two identical halves, so -50% loops seamlessly. */
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+.marquee-viewport {
+  contain: layout paint;
+}
+
+.animate-marquee {
+  width: max-content;
+  animation: marquee 40s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@media (hover: hover) {
+  .marquee-viewport:hover .animate-marquee {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
 }

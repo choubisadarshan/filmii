@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useThrottledCallback } from "@/lib/throttle";
 
 interface SoundContextType {
   soundEnabled: boolean;
@@ -131,7 +132,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Synthesize subtle UI hover tick
-  const playHoverSound = () => {
+  const playHoverRaw = () => {
     if (!soundEnabled || !audioCtx) return;
     try {
       if (audioCtx.state === "suspended") audioCtx.resume();
@@ -153,6 +154,9 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       // Audio fallback
     }
   };
+
+  // Fast mouse sweeps fire dozens of mouseenter events: cap hover ticks to one per 80ms
+  const playHoverSound = useThrottledCallback(playHoverRaw, 80);
 
   return (
     <SoundContext.Provider

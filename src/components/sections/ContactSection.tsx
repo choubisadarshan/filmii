@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { RevealDiv } from "@/components/ui/reveal";
 import { Phone, Mail, MapPin, MessageSquare, Check, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useSound } from "@/components/fx/SoundProvider";
@@ -50,15 +51,14 @@ export default function ContactSection() {
     <section id="contact" className="relative py-16 sm:py-24 md:py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Cinematic Ending Headline */}
-        <motion.div
+        <RevealDiv
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-          style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-          className="max-w-4xl mx-auto text-center mb-20 space-y-6"
+                    className="max-w-4xl mx-auto text-center mb-10 md:mb-20 space-y-4 md:space-y-6"
         >
-          <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block">
+          <span className="text-[13px] font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block">
             07 / START A SESSION
           </span>
 
@@ -71,17 +71,16 @@ export default function ContactSection() {
           <p className="text-neutral-300 font-sans text-lg max-w-xl mx-auto font-light leading-relaxed">
             Have a music video concept, EP visualizer, or camera rental inquiry? Connect with our studio team below.
           </p>
-        </motion.div>
+        </RevealDiv>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           {/* Studio Hotline Details (Enters from Left) */}
-          <motion.div
+          <RevealDiv
             initial={{ opacity: 0, x: -80 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-            style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-            className="lg:col-span-5 space-y-8"
+                        className="lg:col-span-5 space-y-8"
           >
             <div className="bg-gradient-to-br from-neutral-900 to-black p-8 lg:p-10 rounded-2xl border border-neutral-800 shadow-[0_0_50px_rgba(220,38,38,0.1)] space-y-8">
               <h3 className="font-display text-3xl tracking-wider text-white uppercase">
@@ -160,24 +159,22 @@ export default function ContactSection() {
                 ))}
               </div>
             )}
-          </motion.div>
+          </RevealDiv>
 
           {/* Minimal Production Inquiry Form (Enters from Right) */}
-          <motion.div
+          <RevealDiv
             initial={{ opacity: 0, x: 80 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-            style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-            className="lg:col-span-7 bg-gradient-to-br from-neutral-900 to-black p-8 sm:p-10 rounded-2xl border border-neutral-800"
+                        className="lg:col-span-7 bg-gradient-to-br from-neutral-900 to-black p-8 sm:p-10 rounded-2xl border border-neutral-800"
           >
             {isSubmitted ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-                style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-                className="py-12 text-center space-y-6"
+                                className="py-12 text-center space-y-6"
               >
                 <div className="w-16 h-16 rounded-full bg-[#E50914] text-white mx-auto flex items-center justify-center">
                   <Check className="w-8 h-8 stroke-[3]" />
@@ -295,7 +292,7 @@ export default function ContactSection() {
                 </button>
               </form>
             )}
-          </motion.div>
+          </RevealDiv>
         </div>
       </div>
     </section>

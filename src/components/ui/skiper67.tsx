@@ -61,15 +61,15 @@ export const Skiper67 = () => {
           <div className="absolute top-6 left-6 right-6 z-30 flex justify-between items-center opacity-90 pointer-events-none">
             <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-neutral-800">
               <span className="w-1.5 h-1.5 rounded-full bg-[#E50914] animate-pulse shadow-[0_0_8px_rgba(229,9,20,0.6)]" />
-              <span className="font-mono text-[10px] tracking-widest uppercase text-neutral-300">
+              <span className="font-mono text-[11px] tracking-widest uppercase text-neutral-300">
                 DIRECTOR'S CUT • 4K MASTER SHOWREEL
               </span>
             </div>
             <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-neutral-800">
-              <span className="font-mono text-[10px] tracking-widest uppercase text-[#E50914] font-semibold">
+              <span className="font-mono text-[11px] tracking-widest uppercase text-[#E50914] font-semibold">
                 SCROLL CINEMATIC PIN
               </span>
-              <div className="bg-[#E50914]/10 border border-[#E50914]/30 px-2 py-0.5 rounded text-[9px] text-[#E50914] font-bold tracking-wider uppercase">
+              <div className="bg-[#E50914]/10 border border-[#E50914]/30 px-2 py-0.5 rounded text-[11px] text-[#E50914] font-bold tracking-wider uppercase">
                 AUDIO ON
               </div>
             </div>
@@ -90,7 +90,7 @@ export const Skiper67 = () => {
 
           {/* Center Indicator Banner Overlay */}
           <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-            <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase text-neutral-400 bg-black/40 backdrop-blur-sm px-5 py-2.5 rounded-full border border-neutral-800/40">
+            <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.22em] uppercase text-neutral-400 bg-black/40 backdrop-blur-sm px-5 py-2.5 rounded-full border border-neutral-800/40">
               <Play className="size-3 fill-neutral-400" /> Keep scrolling to roll reel
             </div>
           </div>

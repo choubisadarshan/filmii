@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { RevealDiv } from "@/components/ui/reveal";
 import { ArrowRight, X } from "lucide-react";
 import { useSound } from "@/components/fx/SoundProvider";
 
@@ -133,19 +134,18 @@ export default function EquipmentSection() {
   }, [activeId, closeModal]);
 
   return (
-    <section id="equipment" className="relative py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
+    <section id="equipment" className="relative py-16 sm:py-24 md:py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
-        <motion.div
+        <RevealDiv
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-          style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-          className="flex flex-col md:flex-row md:items-end justify-between mb-16 border-b border-white/10 pb-8"
+                    className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12 md:mb-16 border-b border-white/10 pb-8"
         >
           <div>
-            <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
+            <span className="text-[13px] font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
               04 / CINEMA GEAR / RENTAL
             </span>
             <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white">
@@ -156,10 +156,10 @@ export default function EquipmentSection() {
           <p className="text-neutral-400 font-sans text-base max-w-md mt-4 md:mt-0 leading-relaxed font-light">
             Professional cinema equipment for productions that demand more.
           </p>
-        </motion.div>
+        </RevealDiv>
 
         {/* Editorial 2x2 Category Showcase Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10 mb-12 md:mb-20">
           {categories.map((cat, idx) => (
             <motion.button
               key={cat.id}
@@ -174,8 +174,7 @@ export default function EquipmentSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001, delay: idx * 0.1 }}
-              style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-              className="group relative aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/10 block w-full text-left select-none cursor-pointer"
+                            className="group relative aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/10 block w-full text-left select-none cursor-pointer"
             >
               {/* Cinematic Background Image */}
               <Image
@@ -193,9 +192,9 @@ export default function EquipmentSection() {
               {/* Category Info Overlay */}
               <div className="absolute inset-0 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
                 <div className="flex justify-between items-start">
-                  {/* <span className="text-[10px] font-mono text-neutral-400 tracking-widest uppercase">
+                  <span className="text-[11px] font-mono text-neutral-400 tracking-widest uppercase">
                     0{idx + 1} / CATEGORY
-                  </span> */}
+                  </span>
                 </div>
 
                 <div className="flex items-end justify-between gap-4">
@@ -203,12 +202,12 @@ export default function EquipmentSection() {
                     <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl tracking-wider text-white uppercase group-hover:text-neutral-200 transition-colors">
                       {cat.title}
                     </h3>
-                    <p className="font-mono text-xs sm:text-sm text-neutral-400 tracking-widest uppercase font-medium">
+                    <p className="font-mono text-[13px] sm:text-sm text-neutral-400 tracking-widest uppercase font-medium">
                       {cat.brands}
                     </p>
                   </div>
 
-                  <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-white group-hover:text-[#E50914] transition-colors pb-1 shrink-0">
+                  <div className="inline-flex items-center gap-2 font-mono text-[13px] uppercase tracking-wider text-white group-hover:text-[#E50914] transition-colors pb-1 shrink-0">
                     <span className="hidden sm:inline">VIEW GEAR</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" />
                   </div>
@@ -219,13 +218,12 @@ export default function EquipmentSection() {
         </div>
 
         {/* Studio Equipment Inquiry CTA */}
-        <motion.div
+        <RevealDiv
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-          style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-          className="border-t border-white/10 pt-16 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left"
+                    className="border-t border-white/10 pt-10 md:pt-16 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left"
         >
           <div className="space-y-2 max-w-xl">
             <h3 className="font-display text-3xl sm:text-4xl tracking-wider text-white uppercase">
@@ -240,12 +238,12 @@ export default function EquipmentSection() {
             href="#contact"
             onMouseEnter={playHoverSound}
             onClick={playShutterSound}
-            className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(229,9,20,0.3)] shrink-0"
+            className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-[13px] font-bold uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(229,9,20,0.3)] shrink-0"
           >
             <span>REQUEST EQUIPMENT</span>
             <ArrowRight className="w-4 h-4" />
           </a>
-        </motion.div>
+        </RevealDiv>
       </div>
       {/* Category Detail Modal */}
       <AnimatePresence>
@@ -311,7 +309,7 @@ export default function EquipmentSection() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-black/30 to-transparent md:bg-gradient-to-r md:from-transparent md:via-black/20 md:to-[#0A0A0A]" />
                 <div className="absolute bottom-3 left-5 right-5 md:bottom-8 md:left-8 md:right-8">
-                  <span className="text-[10px] font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-1">
+                  <span className="text-[11px] font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-1">
                     {active.brands}
                   </span>
                   <h3 className="font-display text-3xl md:text-5xl tracking-wider text-white uppercase leading-none">
@@ -331,7 +329,7 @@ export default function EquipmentSection() {
                   {active.stats.map((st) => (
                     <div key={st.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center md:text-left">
                       <div className="font-display text-2xl md:text-3xl tracking-wider text-white">{st.value}</div>
-                      <div className="font-mono text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-widest mt-0.5">
+                      <div className="font-mono text-[11px] md:text-[11px] text-neutral-500 uppercase tracking-widest mt-0.5">
                         {st.label}
                       </div>
                     </div>
@@ -344,12 +342,12 @@ export default function EquipmentSection() {
                     <li key={item.name} className="py-3.5 flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="font-sans text-sm md:text-base text-white font-medium">{item.name}</p>
-                        <p className="font-mono text-[10px] md:text-xs text-neutral-500 uppercase tracking-wider mt-0.5">
+                        <p className="font-mono text-[11px] md:text-xs text-neutral-500 uppercase tracking-wider mt-0.5">
                           {item.type}
                         </p>
                         <p className="font-sans text-xs md:text-sm text-neutral-400 font-light mt-1">{item.specs}</p>
                       </div>
-                      <span className="shrink-0 font-mono text-xs text-[#E50914] border border-[#E50914]/30 rounded-full px-2.5 py-1">
+                      <span className="shrink-0 font-mono text-[13px] text-[#E50914] border border-[#E50914]/30 rounded-full px-2.5 py-1">
                         ×{item.qty}
                       </span>
                     </li>
@@ -363,7 +361,7 @@ export default function EquipmentSection() {
                     playShutterSound();
                     closeModal();
                   }}
-                  className="flex w-full md:inline-flex md:w-auto items-center justify-center gap-3 px-8 py-4 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-widest transition-colors shadow-[0_0_30px_rgba(229,9,20,0.3)]"
+                  className="flex w-full md:inline-flex md:w-auto items-center justify-center gap-3 px-8 py-4 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-[13px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_30px_rgba(229,9,20,0.3)]"
                 >
                   <span>REQUEST THIS KIT</span>
                   <ArrowRight className="w-4 h-4" />

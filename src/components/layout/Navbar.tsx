@@ -73,7 +73,7 @@ export default function Navbar({ hidden = false }: NavbarProps) {
               key={link.label}
               href={link.href}
               onMouseEnter={playHoverSound}
-              className="text-xs font-mono tracking-widest text-neutral-400 hover:text-white transition-colors relative py-1 group"
+              className="text-[13px] font-mono tracking-widest text-neutral-400 hover:text-white transition-colors relative py-1 group"
             >
               {link.label}
               <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-[#E50914] group-hover:w-full transition-all duration-300" />
@@ -112,7 +112,7 @@ export default function Navbar({ hidden = false }: NavbarProps) {
           >
             <ShoppingBag className="w-4 h-4" />
             {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1.5 w-4 h-4 bg-[#E50914] text-white font-mono font-bold text-[9px] rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1.5 w-4 h-4 bg-[#E50914] text-white font-mono font-bold text-[11px] rounded-full flex items-center justify-center">
                 {totalItems}
               </span>
             )}
@@ -122,7 +122,7 @@ export default function Navbar({ hidden = false }: NavbarProps) {
           <a
             href="#contact"
             onMouseEnter={playHoverSound}
-            className="hidden sm:inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all"
+            className="hidden sm:inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-[13px] font-bold uppercase tracking-wider transition-all"
           >
             START A PROJECT
           </a>
@@ -162,7 +162,7 @@ export default function Navbar({ hidden = false }: NavbarProps) {
             <a
               href="#contact"
               onClick={() => setMobileMenuOpen(false)}
-              className="block w-full text-center py-3 bg-[#E50914] text-white font-mono font-bold text-xs uppercase tracking-wider rounded-full"
+              className="block w-full text-center py-3 bg-[#E50914] text-white font-mono font-bold text-[13px] uppercase tracking-wider rounded-full"
             >
               START A PROJECT
             </a>

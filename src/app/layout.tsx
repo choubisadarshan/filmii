@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Inter } from "next/font/google";
+import { Bebas_Neue, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ResetScroll from "@/components/ui/reset-scroll";
 
@@ -16,6 +16,12 @@ const inter = Inter({
   variable: "--font-inter",
   display: "swap",
   preload: true,
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -67,7 +73,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${bebasNeue.variable} ${inter.variable} dark`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${bebasNeue.variable} ${inter.variable} ${jetbrainsMono.variable} dark`}>
       <body className="bg-black text-neutral-100 font-sans antialiased selection:bg-red-600 selection:text-black">
         <ResetScroll />
         {children}

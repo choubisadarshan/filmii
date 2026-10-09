@@ -10,12 +10,14 @@ import CustomCursor from "@/components/fx/CustomCursor";
 import LoadingScreen from "@/components/fx/LoadingScreen";
 import Navbar from "@/components/layout/Navbar";
 import HeroSection from "@/components/sections/HeroSection";
+import ServicesSection from "@/components/sections/ServicesSection";
+import PortfolioSection from "@/components/sections/PortfolioSection";
 import ScrollToHash from "@/components/ui/scroll-to-hash";
 
-// Dynamically import below-the-fold sections & overlays for optimal initial JS payload
+// Sections above "Our work" are imported normally so page height is final on the first render
+// (needed to return to the right scroll position without a visible scroll).
+// Sections below it stay lazy-loaded.
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"), { ssr: false });
-const ServicesSection = dynamic(() => import("@/components/sections/ServicesSection"));
-const PortfolioSection = dynamic(() => import("@/components/sections/PortfolioSection"));
 const EquipmentSection = dynamic(() => import("@/components/sections/EquipmentSection"));
 const RateCalculator = dynamic(() => import("@/components/sections/RateCalculator"));
 const AboutSection = dynamic(() => import("@/components/sections/AboutSection"));

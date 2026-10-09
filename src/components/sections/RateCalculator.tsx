@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
+import { RevealDiv } from "@/components/ui/reveal";
 import { ArrowRight } from "lucide-react";
 import { useSound } from "@/components/fx/SoundProvider";
 
@@ -14,8 +14,8 @@ export default function RateCalculator() {
   const [cameraTier, setCameraTier] = useState<"fx9" | "red" | "arri">("arri");
   const [vfxTier, setVfxTier] = useState<boolean>(true);
 
-  // Price Calculation Logic
-  const getBaseRate = () => {
+  // Price calculation: recomputed only when an input actually changes
+  const estimatedTotal = useMemo(() => {
     let base = 2500;
     if (projectType === "ep") base = 4200;
     if (projectType === "commercial") base = 5500;
@@ -32,9 +32,7 @@ export default function RateCalculator() {
 
     const totalPerDay = base + crewCost + cameraCost;
     return totalPerDay * days + vfxCost;
-  };
-
-  const estimatedTotal = getBaseRate();
+  }, [days, projectType, crewTier, cameraTier, vfxTier]);
 
   const handleApplyToQuote = () => {
     playShutterSound();
@@ -48,16 +46,15 @@ export default function RateCalculator() {
     <section id="calculator" className="relative py-16 sm:py-24 md:py-32 px-6 sm:px-8 lg:px-12 bg-[#050505] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
-        <motion.div
+        <RevealDiv
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-          style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-          className="flex flex-col md:flex-row md:items-end justify-between mb-16 border-b border-white/10 pb-8"
+                    className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12 md:mb-16 border-b border-white/10 pb-8"
         >
           <div>
-            <span className="text-xs font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
+            <span className="text-[13px] font-mono text-[#E50914] uppercase tracking-[0.2em] font-semibold block mb-2">
               05 / PRODUCTION ESTIMATOR
             </span>
             <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl tracking-wider uppercase text-white leading-[0.9]">
@@ -68,22 +65,21 @@ export default function RateCalculator() {
           <p className="text-neutral-400 font-sans text-base max-w-md mt-6 md:mt-0 leading-relaxed font-light">
             Build your production setup and get a clear estimate for your project.
           </p>
-        </motion.div>
+        </RevealDiv>
 
         {/* Clean Editorial Two-Column Estimator */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           {/* Left Configuration Panel (Enters from Left) */}
-          <motion.div
+          <RevealDiv
             initial={{ opacity: 0, x: -80 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-            style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-            className="lg:col-span-7 space-y-10"
+                        className="lg:col-span-7 space-y-10"
           >
             {/* 01. Shoot Duration */}
             <div className="space-y-3">
-              <span className="block font-mono text-xs text-[#E50914] font-semibold uppercase tracking-[0.15em]">
+              <span className="block font-mono text-[13px] text-[#E50914] font-semibold uppercase tracking-[0.15em]">
                 01 / SHOOT DURATION
               </span>
               <div className="flex items-center justify-between bg-white/[0.02] border border-white/10 rounded-xl p-3 max-w-xs sm:max-w-sm">
@@ -121,7 +117,7 @@ export default function RateCalculator() {
 
             {/* 02. Project Type */}
             <div className="space-y-3">
-              <span className="block font-mono text-xs text-[#E50914] font-semibold uppercase tracking-[0.15em]">
+              <span className="block font-mono text-[13px] text-[#E50914] font-semibold uppercase tracking-[0.15em]">
                 02 / PROJECT TYPE
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -140,7 +136,7 @@ export default function RateCalculator() {
                         playHoverSound();
                         setProjectType(item.id as "mv" | "ep" | "commercial");
                       }}
-                      className={`py-3.5 px-4 rounded-xl border text-center font-mono text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`py-3.5 px-4 rounded-xl border text-center font-mono text-[13px] tracking-wider uppercase transition-colors flex items-center justify-center gap-2 cursor-pointer ${
                         isSelected
                           ? "bg-white/10 border-white text-white font-bold"
                           : "bg-white/[0.02] border-white/10 text-neutral-300 hover:text-white hover:border-neutral-500 font-medium"
@@ -156,7 +152,7 @@ export default function RateCalculator() {
 
             {/* 03. Crew & Staffing */}
             <div className="space-y-3">
-              <span className="block font-mono text-xs text-[#E50914] font-semibold uppercase tracking-[0.15em]">
+              <span className="block font-mono text-[13px] text-[#E50914] font-semibold uppercase tracking-[0.15em]">
                 03 / CREW & STAFFING
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -175,7 +171,7 @@ export default function RateCalculator() {
                         playHoverSound();
                         setCrewTier(item.id as "minimal" | "standard" | "full");
                       }}
-                      className={`py-3.5 px-4 rounded-xl border text-center font-mono text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`py-3.5 px-4 rounded-xl border text-center font-mono text-[13px] tracking-wider uppercase transition-colors flex items-center justify-center gap-2 cursor-pointer ${
                         isSelected
                           ? "bg-white/10 border-white text-white font-bold"
                           : "bg-white/[0.02] border-white/10 text-neutral-300 hover:text-white hover:border-neutral-500 font-medium"
@@ -191,7 +187,7 @@ export default function RateCalculator() {
 
             {/* 04. Camera Package */}
             <div className="space-y-3">
-              <span className="block font-mono text-xs text-[#E50914] font-semibold uppercase tracking-[0.15em]">
+              <span className="block font-mono text-[13px] text-[#E50914] font-semibold uppercase tracking-[0.15em]">
                 04 / CAMERA PACKAGE
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -210,7 +206,7 @@ export default function RateCalculator() {
                         playHoverSound();
                         setCameraTier(item.id as "fx9" | "red" | "arri");
                       }}
-                      className={`py-3.5 px-4 rounded-xl border text-center font-mono text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`py-3.5 px-4 rounded-xl border text-center font-mono text-[13px] tracking-wider uppercase transition-colors flex items-center justify-center gap-2 cursor-pointer ${
                         isSelected
                           ? "bg-white/10 border-white text-white font-bold"
                           : "bg-white/[0.02] border-white/10 text-neutral-300 hover:text-white hover:border-neutral-500 font-medium"
@@ -226,12 +222,12 @@ export default function RateCalculator() {
 
             {/* 05. Post Production */}
             <div className="space-y-3">
-              <span className="block font-mono text-xs text-[#E50914] font-semibold uppercase tracking-[0.15em]">
+              <span className="block font-mono text-[13px] text-[#E50914] font-semibold uppercase tracking-[0.15em]">
                 05 / POST PRODUCTION
               </span>
               <div className="flex items-center justify-between p-4 sm:p-5 bg-white/[0.02] rounded-xl border border-white/10">
                 <div className="space-y-1 pr-4">
-                  <span className="font-mono text-xs text-white font-semibold uppercase tracking-wider block">
+                  <span className="font-mono text-[13px] text-white font-semibold uppercase tracking-wider block">
                     INCLUDE POST PRODUCTION
                   </span>
                   <span className="text-xs font-sans text-neutral-300 block font-light">
@@ -246,7 +242,7 @@ export default function RateCalculator() {
                     playHoverSound();
                     setVfxTier(!vfxTier);
                   }}
-                  className={`px-4 py-2 rounded-lg font-mono text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                  className={`px-4 py-2 rounded-lg font-mono text-[13px] font-bold tracking-wider uppercase transition-colors flex items-center gap-2 shrink-0 cursor-pointer ${
                     vfxTier
                       ? "bg-white/10 border border-white text-white"
                       : "bg-white/5 border border-white/10 text-neutral-400"
@@ -257,31 +253,30 @@ export default function RateCalculator() {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </RevealDiv>
 
           {/* Right Summary & Estimated Budget Panel (Enters from Right) */}
-          <motion.div
+          <RevealDiv
             initial={{ opacity: 0, x: 80 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ type: "spring", stiffness: 90, damping: 25, mass: 0.8, restDelta: 0.001 }}
-            style={{ transformPerspective: 1000, willChange: "transform, opacity" }}
-            className="lg:col-span-5 bg-gradient-to-br from-neutral-900 to-black p-8 sm:p-10 rounded-2xl border border-neutral-800 space-y-8 flex flex-col justify-between"
+                        className="lg:col-span-5 bg-gradient-to-br from-neutral-900 to-black p-8 sm:p-10 rounded-2xl border border-neutral-800 space-y-8 flex flex-col justify-between"
           >
             <div className="space-y-8">
               <div className="space-y-2">
-                <span className="font-mono text-xs text-[#E50914] uppercase tracking-[0.15em] font-semibold block">
+                <span className="font-mono text-[13px] text-[#E50914] uppercase tracking-[0.15em] font-semibold block">
                   ESTIMATED PRODUCTION BUDGET
                 </span>
                 <div className="font-display text-6xl sm:text-7xl lg:text-8xl text-white tracking-wider">
                   ${estimatedTotal.toLocaleString()}
                 </div>
-                <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest block pt-1">
+                <span className="text-[13px] font-mono text-neutral-400 uppercase tracking-widest block pt-1">
                   ESTIMATED DIRECTING & PRODUCTION COST
                 </span>
               </div>
 
-              <div className="border-t border-neutral-800 pt-6 space-y-3.5 font-mono text-xs">
+              <div className="border-t border-neutral-800 pt-6 space-y-3.5 font-mono text-[13px]">
                 <div className="flex justify-between items-center text-neutral-300">
                   <span className="text-neutral-500 uppercase tracking-wider">SHOOT DAYS</span>
                   <span className="font-bold text-white tracking-wider">{days} DAYS</span>
@@ -310,12 +305,12 @@ export default function RateCalculator() {
             <button
               onClick={handleApplyToQuote}
               onMouseEnter={playHoverSound}
-              className="w-full py-4 px-8 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all mt-8"
+              className="w-full py-4 px-8 rounded-full bg-[#E50914] hover:bg-red-700 text-white font-mono text-[13px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors mt-8"
             >
               <span>APPLY TO PRODUCTION INQUIRY</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-          </motion.div>
+          </RevealDiv>
         </div>
       </div>
     </section>

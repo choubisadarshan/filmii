@@ -78,7 +78,7 @@ export default function ShowreelModal({
                   <h3 className="font-display text-xl text-white tracking-wider uppercase">
                     {title}
                   </h3>
-                  <p className="text-xs font-mono text-neutral-400">{artist}</p>
+                  <p className="text-[13px] font-mono text-neutral-400">{artist}</p>
                 </div>
               </div>
 
@@ -134,7 +134,7 @@ export default function ShowreelModal({
                     </button>
                   </div>
 
-                  <span className="font-mono text-xs text-neutral-300 bg-black/60 px-3 py-1.5 rounded-lg border border-neutral-800">
+                  <span className="font-mono text-[13px] text-neutral-300 bg-black/60 px-3 py-1.5 rounded-lg border border-neutral-800">
                     24 FPS | 4K CINEMA DNG
                   </span>
                 </div>
@@ -144,12 +144,12 @@ export default function ShowreelModal({
             {/* Footer Specifications */}
             <div className="bg-neutral-900/90 px-6 py-4 border-t border-neutral-800 flex flex-wrap justify-between items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-neutral-400 uppercase">CAMERA & RIG:</span>
+                <span className="text-[13px] font-mono text-neutral-400 uppercase">CAMERA & RIG:</span>
                 <div className="flex flex-wrap gap-2">
                   {gearList.map((g) => (
                     <span
                       key={g}
-                      className="text-[10px] font-mono bg-black text-red-400 px-2.5 py-1 rounded border border-red-950"
+                      className="text-[11px] font-mono bg-black text-red-400 px-2.5 py-1 rounded border border-red-950"
                     >
                       {g}
                     </span>
@@ -160,7 +160,7 @@ export default function ShowreelModal({
               <a
                 href="#contact"
                 onClick={onClose}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(255,0,0,0.5)] transition-all"
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-mono text-[13px] font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(255,0,0,0.5)] transition-all"
               >
                 REQUEST PRODUCTION
               </a>
